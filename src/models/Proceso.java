@@ -1,21 +1,109 @@
  package models;
 
+ import java.awt.Color;
+ import java.util.Random;
+
 public class Proceso {
 
-    
-    private Integer id;
+    private String id;
     private String nombre;
     private Integer quantum;
     private Float tiempoLlegada;
     private Float tiempoEjecucion;
-    private Float operacionEntradaSalida;
-    private Float duracionOperacion;
+    private Float operacionES;
+    private Float duracionES;
+    private Color color;
 
-    public Integer getId() {
+
+    private Float tiempoRestante; // Cuánto le falta para terminar (inicia igual a rafagaTotal)
+    private Float tiempoEnES; // Contador para cuando está bloqueado
+    private Float tiempoEjecutado; // Cuánto tiempo ha usado la CPU hasta ahora
+    private Float tiempoEspera;
+
+    public Proceso (String id, String nombre, Integer quantum, Float tiempoLlegada, Float tiempoEjecucion, Float operacionES, Float duracionES, Color color) {
+        this.id = id;
+        this.nombre = nombre;
+        this.quantum = quantum;
+        this.tiempoLlegada = tiempoLlegada;
+        this.tiempoEjecucion = tiempoEjecucion;
+        this.operacionES = operacionES;
+        this.duracionES = duracionES;
+        this.color = color;
+
+        this.tiempoRestante = tiempoEjecucion;
+        this.tiempoEnES = 0f;
+        this.tiempoEjecutado = 0f;
+        this.tiempoEspera = 0f;
+
+        this.color = generarColorAleatorio();
+    }
+
+    // Genera un color pastel aleatorio para que se vea bonito en la interfaz
+    private Color generarColorAleatorio() {
+        Random rand = new Random();
+        float r = rand.nextFloat() / 2f + 0.5f;
+        float g = rand.nextFloat() / 2f + 0.5f;
+        float b = rand.nextFloat() / 2f + 0.5f;
+        return new Color(r, g, b);
+    }
+
+    // Verifica si el proceso ya terminó
+    public boolean esTerminado() {
+        return tiempoRestante <= 0;
+    }
+
+    // Verifica si en este momento exacto el proceso debe irse a Bloqueado (E/S)
+    // Se cumple si: no ha terminado E/S, tiene una E/S configurada, y llegó el momento justo
+    public boolean debeHacerES() {
+        // Ejemplo: Si operacionES es 3, y tiempoEjecutado es 3, toca ir a E/S
+        return (duracionES > 0) && (tiempoEjecutado == operacionES);
+    }
+
+    public Float getTiempoRestante() {
+        return this.tiempoRestante;
+    }
+
+    public void setTiempoRestante(Float tiempoRestante) {
+        this.tiempoRestante = tiempoRestante;
+    }
+
+    public Float getTiempoEnES() {
+        return this.tiempoEnES;
+    }
+
+    public void setTiempoEnES(Float tiempoEnES) {
+        this.tiempoEnES = tiempoEnES;
+    }
+
+    public Float getTiempoEjecutado() {
+        return this.tiempoEjecutado;
+    }
+
+    public void setTiempoEjecutado(Float tiempoEjecutado) {
+        this.tiempoEjecutado = tiempoEjecutado;
+    }
+
+    public Float getTiempoEspera() {
+        return this.tiempoEspera;
+    }
+
+    public void setTiempoEspera(Float tiempoEspera) {
+        this.tiempoEspera = tiempoEspera;
+    }
+
+    public Color getColor() {
+        return this.color;
+    }
+
+    public void setColor(Color color) {
+        this.color = color;
+    }
+
+    public String getId() {
         return this.id;
     }
 
-    public void setId(Integer id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -51,20 +139,20 @@ public class Proceso {
         this.tiempoEjecucion = tiempoEjecucion;
     }
 
-    public Float getOperacionEntradaSalida() {
-        return this.operacionEntradaSalida;
+    public Float getOperacionES() {
+        return this.operacionES;
     }
 
-    public void setOperacionEntradaSalida(Float operacionEntradaSalida) {
-        this.operacionEntradaSalida = operacionEntradaSalida;
+    public void setOperacionES(Float operacionES) {
+        this.operacionES = operacionES;
     }
 
-    public Float getDuracionOperacion() {
-        return this.duracionOperacion;
+    public Float getDuracionES() {
+        return this.duracionES;
     }
 
-    public void setDuracionOperacion(Float duracionOperacion) {
-        this.duracionOperacion = duracionOperacion;
+    public void setDuracionES(Float duracionES) {
+        this.duracionES = duracionES;
     }
 
 }
