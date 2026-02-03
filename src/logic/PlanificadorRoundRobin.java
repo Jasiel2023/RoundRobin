@@ -134,173 +134,162 @@ public static class EjecucionES {
     // ======================
     // MÉTODO TICK (ACTUALIZADO CON E/S)
     // ======================
- public void tick() {
+public void tick() {
     System.out.println("\n=== Tick " + tiempoActual + " ===");
-    
-    // ============================================
-    // FASE 0: PROCESAR OPERACIONES E/S (PRIMERO)
-    // ============================================
-    procesarOperacionesES();
-    
-    // ============================================
-    // FASE 1: MANEJAR LLEGADAS DE PROCESOS NUEVOS
-    // ============================================
+
+    // ==================================================
+    // FASE 0: PROCESAR E/S (solo detectar quién termina)
+    // ==================================================
+    procesarOperacionesES(); // Llena procesosQueTerminanES (NO encola aún)
+
+    // ==================================================
+    // FASE 1: DETECTAR LLEGADAS
+    // ==================================================
     List<Proceso> llegadasEsteTick = new ArrayList<>();
-    
+
     for (Proceso p : procesosPendientes) {
         if (p.getTiempoLlegada() == tiempoActual) {
             p.setEstado(EnumEstadoProceso.LISTO);
             llegadasEsteTick.add(p);
-            historialCPL.add(p);
             System.out.println("Llega P" + p.getId() + " en t=" + tiempoActual);
         }
     }
-    
-    for (Proceso p : llegadasEsteTick) {
-        colaListos.add(p);
-    }
-    
-    // 2. SEGUNDO: Procesos que terminaron E/S en este tick (PRIORIDAD 3)
-    for (Proceso p : procesosQueTerminanES) {
-        colaListos.add(p);
-        historialCPL.add(p);
-        System.out.println("P" + p.getId() + " TERMINA E/S, vuelve a cola");
-    }
+
     procesosPendientes.removeIf(p -> p.getTiempoLlegada() == tiempoActual);
-    
-    // ============================================
-    // FASE 2: MANEJAR PROCESO ACTUAL EN CPU
-    // ============================================
+
+    // ==================================================
+    // FASE 2: EJECUTAR CPU (1 unidad de tiempo)
+    // ==================================================
     boolean procesoExpulsadoPorQuantum = false;
     Proceso procesoExpulsadoObj = null;
-    boolean procesoFueAES = false;
-    
+
     if (procesoActual != null) {
-        // 1. Actualizar tiempo ejecutado acumulado
+        // Actualizar métricas
         procesoActual.incrementarTiempoEjecutado();
-        
-        // 2. Actualizar bloque Gantt
         if (bloqueActual != null) {
             bloqueActual.duracion++;
         }
-        
-        // 3. Ejecutar (reducir ráfaga y quantum)
-        procesoActual.setTiempoRestante(procesoActual.getTiempoRestante() - 1);
+
+        // Ejecutar 1 unidad
+        if (procesoActual.getTiempoRestante() > 0) {
+            procesoActual.setTiempoRestante(procesoActual.getTiempoRestante() - 1);
+        }
         quantumRestante--;
-        
-        System.out.println("Ejecuta P" + procesoActual.getId() + 
-                         ", Restante: " + procesoActual.getTiempoRestante() + 
-                         ", Quantum: " + quantumRestante +
-                         ", EjecAcum: " + procesoActual.getTiempoEjecutadoAcumulado());
-        
-        // ============================================
-        // VERIFICAR CONDICIONES DE SALIDA DE CPU
-        // ============================================
-        
-        // A. ¿Terminó completamente?
+
+        System.out.println("Ejecuta P" + procesoActual.getId() +
+                ", Restante: " + procesoActual.getTiempoRestante() +
+                ", Quantum: " + quantumRestante);
+
+        // A) ¿Terminó?
         if (procesoActual.getTiempoRestante() == 0) {
-            // Registrar fin de ejecución
             if (ejecucionActual != null) {
                 ejecucionActual.setTiempoFin(tiempoActual);
                 ejecucionesCompletadas.add(ejecucionActual);
             }
-            
+
             procesoActual.setEstado(EnumEstadoProceso.TERMINADO);
             procesoActual.setTiempoFin(tiempoActual);
             System.out.println("P" + procesoActual.getId() + " TERMINA en t=" + tiempoActual);
-            
-            procesoActual = null;
-            ejecucionActual = null;
-            bloqueActual = null;
-            
-        } 
-        // B. ¿Es momento de ir a E/S? (PRIORIDAD sobre quantum)
-        else if (procesoActual.debeIrAES()) {
-            System.out.println("P" + procesoActual.getId() + " VA A E/S");
-            
-            // Guardar SNAPSHOT del momento de entrada
-            EjecucionES ejecucionES = new EjecucionES(
-                procesoActual,
-                tiempoActual,                    // Tiempo de entrada
-                procesoActual.getTiempoRestante(), // Ráfaga AL ENTRAR (NO cambiará)
-                procesoActual.getDuracionES()      // Duración
-            );
-            ejecucionesES.add(ejecucionES);
-            
-            // Mover a cola E/S (lógica normal)
-            if (ejecucionActual != null) {
-                ejecucionActual.setTiempoFin(tiempoActual);
-                ejecucionesCompletadas.add(ejecucionActual);
-            }
-            
-            procesoActual.iniciarES();
-            colaES.add(procesoActual);
-            
+
             procesoActual = null;
             ejecucionActual = null;
             bloqueActual = null;
         }
-        // C. ¿Terminó quantum? (solo si NO fue a E/S)
-        else if (quantumRestante == 0) {
-            // Registrar fin de ejecución
+        // B) ¿Debe ir a E/S? (tiene prioridad sobre quantum)
+        else if (procesoActual.debeIrAES()) {
+            System.out.println("P" + procesoActual.getId() + " VA A E/S");
+
+            EjecucionES ejecucionES = new EjecucionES(
+                procesoActual,
+                tiempoActual,
+                procesoActual.getTiempoRestante(),
+                procesoActual.getDuracionESActual()
+            );
+
+            ejecucionesES.add(ejecucionES);
+
             if (ejecucionActual != null) {
                 ejecucionActual.setTiempoFin(tiempoActual);
                 ejecucionesCompletadas.add(ejecucionActual);
             }
-            
+
+            procesoActual.iniciarES();
+            colaES.add(procesoActual);
+
+            procesoActual = null;
+            ejecucionActual = null;
+            bloqueActual = null;
+        }
+        // C) ¿Se acabó el quantum?
+        else if (quantumRestante == 0) {
+            if (ejecucionActual != null) {
+                ejecucionActual.setTiempoFin(tiempoActual);
+                ejecucionesCompletadas.add(ejecucionActual);
+            }
+
             procesoActual.setEstado(EnumEstadoProceso.LISTO);
             procesoExpulsadoPorQuantum = true;
             procesoExpulsadoObj = procesoActual;
-            
+
             System.out.println("P" + procesoActual.getId() + " TERMINA QUANTUM en t=" + tiempoActual);
-            
+
             procesoActual = null;
             ejecucionActual = null;
             bloqueActual = null;
         }
     }
-    
-    // ============================================
-    // FASE 3: ENCOLAR PROCESOS SEGÚN PRIORIDAD
-    // ============================================
-    // 1. Ya encolamos nuevas llegadas (FASE 1)
-    
-    // 2. SEGUNDO: Proceso que terminó quantum (si aplica)
+
+    // ==================================================
+    // FASE 3: ENCOLAR SEGÚN TU PRIORIDAD
+    // PRIORIDAD: LLEGADAS > QUANTUM > E/S
+    // ==================================================
+
+    // 1) Llegadas
+    for (Proceso p : llegadasEsteTick) {
+        colaListos.add(p);
+        historialCPL.add(p);
+    }
+
+    // 2) Proceso que terminó quantum
     if (procesoExpulsadoPorQuantum && procesoExpulsadoObj != null) {
         colaListos.add(procesoExpulsadoObj);
         historialCPL.add(procesoExpulsadoObj);
         System.out.println("Reencola P" + procesoExpulsadoObj.getId() + " (quantum)");
     }
-    
-    // 3. TERCERO: Procesos que terminaron E/S ya fueron encolados en FASE 0
-    // PERO: Cuando procesos terminan E/S, deben respetar el orden de prioridad
-    //       respecto a los que llegaron en el mismo tick
-    
-    // ============================================
-    // FASE 4: ASIGNAR NUEVO PROCESO A CPU (si está libre)
-    // ============================================
-        if (procesoActual == null && !colaListos.isEmpty()) {
+
+    // 3) Procesos que terminaron E/S
+    for (Proceso p : procesosQueTerminanES) {
+        p.setEstado(EnumEstadoProceso.LISTO);
+        colaListos.add(p);
+        historialCPL.add(p);
+        System.out.println("P" + p.getId() + " vuelve de E/S");
+    }
+
+    // ==================================================
+    // FASE 4: ASIGNAR CPU SI ESTÁ LIBRE
+    // ==================================================
+    if (procesoActual == null && !colaListos.isEmpty()) {
         procesoActual = colaListos.poll();
         procesoActual.setEstado(EnumEstadoProceso.EJECUTANDO);
         quantumRestante = politicaQuantum.obtenerQuantum(procesoActual);
-        
+
         ejecucionActual = new EjecucionCPU(procesoActual, tiempoActual);
         historialCPU.add(procesoActual);
-        
+
         bloqueActual = new BloqueGantt(procesoActual, tiempoActual);
         gantt.add(bloqueActual);
-        
-        System.out.println("Asigna P" + procesoActual.getId() + 
-                         " a CPU en t=" + tiempoActual + 
-                         ", Quantum: " + quantumRestante);
+
+        System.out.println("Asigna P" + procesoActual.getId() +
+                " a CPU en t=" + tiempoActual +
+                ", Quantum: " + quantumRestante);
     }
-    
-    // ============================================
+
+    // ==================================================
     // FASE 5: AVANZAR TIEMPO
-    // ============================================
+    // ==================================================
     tiempoActual++;
-    
-    // DEBUG: Mostrar estado
+
+    // Debug
     mostrarEstadoDebug();
 }
 

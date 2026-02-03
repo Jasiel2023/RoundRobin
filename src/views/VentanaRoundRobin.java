@@ -11,6 +11,7 @@ import logic.PlanificadorRoundRobin;
 import logic.PoliticaQuantum;
 import logic.QuantumFijo;
 import models.EnumEstadoProceso;
+import models.OperacionES;
 import models.Proceso;
 
 public class VentanaRoundRobin extends JFrame {
@@ -24,6 +25,8 @@ public class VentanaRoundRobin extends JFrame {
     private JLabel lblQuantumProceso;
     private JPanel panelHistorialCola;
     private JPanel panelES;
+    private JLabel lblTiempoActual;
+
     
     // ======================
     // NUEVO: CAMPOS PARA CONFIGURAR E/S
@@ -39,6 +42,8 @@ public class VentanaRoundRobin extends JFrame {
     private ProcesoTableModel tableModel;
     private PlanificadorRoundRobin scheduler;
     private Timer timer;
+    private boolean enPausa = false;
+
 
     private JPanel panelCPU;
 
@@ -65,8 +70,8 @@ public class VentanaRoundRobin extends JFrame {
         // ======================
         txtIntervaloES = new JTextField(5);
         txtDuracionES = new JTextField(5);
-        txtIntervaloES.setText("0");  // Valor por defecto (sin E/S)
-        txtDuracionES.setText("0");
+        txtIntervaloES.setText("");  // Valor por defecto (sin E/S)
+        txtDuracionES.setText("");
 
         comboTipoRR = new JComboBox<>(new String[] {
             "Quantum fijo",
@@ -78,6 +83,9 @@ public class VentanaRoundRobin extends JFrame {
 
         JButton btnAgregar = new JButton("Agregar proceso");
         JButton btnIniciar = new JButton("Iniciar RR");
+        JButton btnPausa = new JButton("Pausar");
+        JButton btnReiniciar = new JButton("Reiniciar");
+
 
         panelForm.add(new JLabel("Llegada:"));
         panelForm.add(txtLlegada);
@@ -87,10 +95,11 @@ public class VentanaRoundRobin extends JFrame {
         // ======================
         // NUEVO: AGREGAR CAMPOS E/S AL FORMULARIO
         // ======================
-        panelForm.add(new JLabel("E/S cada:"));
+        panelForm.add(new JLabel("Momentos E/S (ej: 1-3-5):"));
         panelForm.add(txtIntervaloES);
-        panelForm.add(new JLabel("Dur. E/S:"));
+        panelForm.add(new JLabel("Duraciones E/S (ej: 2-3-4):"));
         panelForm.add(txtDuracionES);
+
 
         // Labels de quantum
         lblQuantumFijo = new JLabel("Quantum fijo:");
@@ -104,6 +113,11 @@ public class VentanaRoundRobin extends JFrame {
 
         panelForm.add(btnAgregar);
         panelForm.add(btnIniciar);
+        panelForm.add(btnPausa);
+        panelForm.add(btnReiniciar);
+
+
+
 
         // ===== Tabla =====
         tableModel = new ProcesoTableModel();
@@ -149,6 +163,21 @@ public class VentanaRoundRobin extends JFrame {
         // ===== Acciones =====
         btnAgregar.addActionListener(e -> agregarProceso());
         btnIniciar.addActionListener(e -> iniciarSimulacion());
+        btnPausa.addActionListener(e -> {
+            if (timer == null) return; // Aún no inicia nada
+
+            if (enPausa) {
+                timer.start();
+                btnPausa.setText("Pausar");
+            } else {
+                timer.stop();
+                btnPausa.setText("Reanudar");
+            }
+            enPausa = !enPausa;
+        });
+        btnReiniciar.addActionListener(e -> reiniciarTodo());
+
+
 
         comboTipoRR.addActionListener(e -> actualizarVistaQuantum());
 
@@ -167,22 +196,50 @@ public class VentanaRoundRobin extends JFrame {
         try {
             int llegada = Integer.parseInt(txtLlegada.getText());
             int rafaga = Integer.parseInt(txtRafaga.getText());
-            
-            // ======================
-            // NUEVO: LEER PARÁMETROS DE E/S
-            // ======================
-            int intervaloES = Integer.parseInt(txtIntervaloES.getText());
-            int duracionES = Integer.parseInt(txtDuracionES.getText());
 
-            // Validaciones básicas
-            if (llegada < 0 || rafaga <= 0 || intervaloES < 0 || duracionES < 0) {
+            // Validaciones básicas de llegada y ráfaga
+            if (llegada < 0 || rafaga <= 0) {
                 throw new NumberFormatException();
             }
 
             // ======================
-            // NUEVO: CREAR PROCESO CON E/S
+            // NUEVO: LEER LISTAS DE E/S
             // ======================
-            Proceso p = new Proceso(llegada, rafaga, intervaloES, duracionES);
+            String textoMomentos = txtIntervaloES.getText().trim();   // ej: "1-3-5"
+            String textoDuraciones = txtDuracionES.getText().trim();  // ej: "2-3-4"
+
+            List<OperacionES> listaES = new ArrayList<>();
+
+            // Si ambos están en "0" o vacíos => sin E/S
+            boolean sinES = (textoMomentos.equals("0") || textoMomentos.isEmpty())
+                        && (textoDuraciones.equals("0") || textoDuraciones.isEmpty());
+
+            if (!sinES) {
+                String[] momentos = textoMomentos.split("-");
+                String[] duraciones = textoDuraciones.split("-");
+
+                // Deben tener la misma cantidad
+                if (momentos.length != duraciones.length) {
+                    throw new NumberFormatException("Cantidad de momentos y duraciones no coincide");
+                }
+
+                for (int i = 0; i < momentos.length; i++) {
+                    int momento = Integer.parseInt(momentos[i].trim());
+                    int duracion = Integer.parseInt(duraciones[i].trim());
+
+                    // Validaciones por cada E/S
+                    if (momento <= 0 || duracion <= 0) {
+                        throw new NumberFormatException("Valores de E/S inválidos");
+                    }
+
+                    listaES.add(new OperacionES(momento, duracion));
+                }
+            }
+
+            // ======================
+            // CREAR PROCESO
+            // ======================
+            Proceso p = new Proceso(llegada, rafaga, listaES);
             p.setEstado(EnumEstadoProceso.NUEVO);
 
             boolean esFijo = comboTipoRR.getSelectedIndex() == 0;
@@ -198,65 +255,68 @@ public class VentanaRoundRobin extends JFrame {
             // Limpiar campos
             txtLlegada.setText("");
             txtRafaga.setText("");
-            txtIntervaloES.setText("0");
-            txtDuracionES.setText("0");
+            txtIntervaloES.setText("");
+            txtDuracionES.setText("");
             txtQuantumProceso.setText("");
 
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this,
                     "Ingrese valores numéricos válidos\n" +
-                    "(todos deben ser ≥ 0, ráfaga > 0)",
+                    "• Llegada ≥ 0\n" +
+                    "• Ráfaga > 0\n" +
+                    "• E/S en formato: 1-3-5 y 2-3-4\n" +
+                    "• Cantidades deben coincidir y ser > 0",
                     "Error",
                     JOptionPane.ERROR_MESSAGE);
         }
     }
+private void iniciarSimulacion() {
+    PoliticaQuantum politica;
 
-    private void iniciarSimulacion() {
-        PoliticaQuantum politica;
+    boolean esFijo = comboTipoRR.getSelectedIndex() == 0;
 
-        boolean esFijo = comboTipoRR.getSelectedIndex() == 0;
-
-        if (esFijo) {
-            int quantum;
-            try {
-                quantum = Integer.parseInt(txtQuantum.getText());
-                if (quantum <= 0) throw new NumberFormatException();
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this,
-                        "Ingrese un quantum válido (> 0)",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            politica = new QuantumFijo(quantum);
-
-        } else {
-            politica = new logic.QuantumPorProceso();
+    if (esFijo) {
+        int quantum;
+        try {
+            quantum = Integer.parseInt(txtQuantum.getText());
+            if (quantum <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Ingrese un quantum válido (> 0)",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
-        scheduler = new PlanificadorRoundRobin(
-            tableModel.getProcesos(),
-            politica
-        );
-
-        timer = new Timer(1000, e -> {
-            scheduler.tick();
-            tableModel.actualizarTabla();
-            actualizarCPU();
-            actualizarHistorialCola();
-            actualizarES();  // ← NUEVO: Actualizar panel de E/S
-
-            if (scheduler.haTerminado()) {
-                timer.stop();
-                JOptionPane.showMessageDialog(this,
-                        "Simulación Round Robin terminada");
-            }
-        });
-
-        timer.start();
+        tableModel.setQuantumGlobal(quantum);
+        politica = new QuantumFijo(quantum);
+    } else {
+        politica = new logic.QuantumPorProceso();
     }
-    
+
+    // ¡CORRECCIÓN! Usar los procesos directamente de la tabla
+    // NO crear nuevas instancias
+    scheduler = new PlanificadorRoundRobin(
+        tableModel.getProcesos(),  // ← USAR PROCESOS ORIGINALES
+        politica
+    );
+
+    timer = new Timer(1000, e -> {
+        scheduler.tick();
+        tableModel.actualizarTabla();
+        actualizarCPU();
+        actualizarHistorialCola();
+        actualizarES();
+
+        if (scheduler.haTerminado()) {
+            timer.stop();
+            JOptionPane.showMessageDialog(this,
+                    "Simulación Round Robin terminada");
+        }
+    });
+    enPausa = false;
+    timer.start();
+}    
     private void actualizarCPU() {
         panelCPU.removeAll();
         
@@ -502,4 +562,37 @@ public class VentanaRoundRobin extends JFrame {
         
         return panelEjec;
     }
+
+    private void reiniciarTodo() {
+    // 1. Detener timer si está corriendo
+    if (timer != null && timer.isRunning()) {
+        timer.stop();
+    }
+
+    // 2. Resetear scheduler
+    scheduler = null;
+
+    // 3. Limpiar tabla de procesos
+    tableModel.limpiar();
+
+    // 4. Limpiar paneles visuales
+    panelCPU.removeAll();
+    panelES.removeAll();
+    panelHistorialCola.removeAll();
+
+    panelCPU.revalidate();
+    panelCPU.repaint();
+
+    panelES.revalidate();
+    panelES.repaint();
+
+    panelHistorialCola.revalidate();
+    panelHistorialCola.repaint();
+
+    // 5. Resetear contador de tiempo
+
+    // 6. Mensajito opcional
+    JOptionPane.showMessageDialog(this, "Simulación reiniciada. Puedes agregar nuevos procesos.");
+}
+
 }
