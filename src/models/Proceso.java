@@ -1,158 +1,180 @@
  package models;
 
- import java.awt.Color;
- import java.util.Random;
+import logic.PoliticaQuantum;
 
 public class Proceso {
 
-    private String id;
-    private String nombre;
-    private Integer quantum;
-    private Float tiempoLlegada;
-    private Float tiempoEjecucion;
-    private Float operacionES;
-    private Float duracionES;
-    private Color color;
+    private static int contador = 1;
 
+    private final int id;
+    private final int tiempoLlegada;
+    private final int rafagaCPU;
+    private int tiempoRestante;
+    private int tiempoInicio = -1;
+    private int tiempoFin = -1;
+    private EnumEstadoProceso estado;
+    private int quantumPersonal = -1;
+    
+    // ======================
+    // CAMBIOS PARA UNA SOLA E/S
+    // ======================
+    private int momentoES;           // Después de cuántos ms de EJECUCIÓN hace E/S
+    private int duracionES;          // Cuánto dura la E/S
+    private int tiempoEjecutadoAcumulado = 0; // Total ms ejecutados en CPU
+    private int tiempoESRestante = 0; // Tiempo restante en E/S actual
+    private boolean enES = false;    // Si está en E/S ahora
+    private boolean esEjecutada = false; // Si YA se ejecutó la E/S (solo una vez)
 
-    private Float tiempoRestante; // Cuánto le falta para terminar (inicia igual a rafagaTotal)
-    private Float tiempoEnES; // Contador para cuando está bloqueado
-    private Float tiempoEjecutado; // Cuánto tiempo ha usado la CPU hasta ahora
-    private Float tiempoEspera;
-
-    public Proceso (String id, String nombre, Integer quantum, Float tiempoLlegada, Float tiempoEjecucion, Float operacionES, Float duracionES, Color color) {
-        this.id = id;
-        this.nombre = nombre;
-        this.quantum = quantum;
+    // ======================
+    // CONSTRUCTORES
+    // ======================
+    
+    // Constructor SIMPLE (UI) - SIN E/S
+    public Proceso(int tiempoLlegada, int rafagaCPU) {
+        this.id = contador++;
         this.tiempoLlegada = tiempoLlegada;
-        this.tiempoEjecucion = tiempoEjecucion;
-        this.operacionES = operacionES;
+        this.rafagaCPU = rafagaCPU;
+        this.tiempoRestante = rafagaCPU;
+        this.estado = EnumEstadoProceso.NUEVO;
+        this.momentoES = 0;          // Sin E/S por defecto
+        this.duracionES = 0;
+    }
+    
+    // Constructor CON E/S (UNA SOLA)
+    public Proceso(int tiempoLlegada, int rafagaCPU, int momentoES, int duracionES) {
+        this.id = contador++;
+        this.tiempoLlegada = tiempoLlegada;
+        this.rafagaCPU = rafagaCPU;
+        this.tiempoRestante = rafagaCPU;
+        this.estado = EnumEstadoProceso.NUEVO;
+        this.momentoES = momentoES;
         this.duracionES = duracionES;
-        this.color = color;
-
-        this.tiempoRestante = tiempoEjecucion;
-        this.tiempoEnES = 0f;
-        this.tiempoEjecutado = 0f;
-        this.tiempoEspera = 0f;
-
-        this.color = generarColorAleatorio();
     }
 
-    // Genera un color pastel aleatorio para que se vea bonito en la interfaz
-    private Color generarColorAleatorio() {
-        Random rand = new Random();
-        float r = rand.nextFloat() / 2f + 0.5f;
-        float g = rand.nextFloat() / 2f + 0.5f;
-        float b = rand.nextFloat() / 2f + 0.5f;
-        return new Color(r, g, b);
+    // ======================
+    // GETTERS Y SETTERS BASE
+    // ======================
+    public int getId() { return id; }
+    public int getTiempoLlegada() { return tiempoLlegada; }
+    public int getRafagaCPU() { return rafagaCPU; }
+    public int getTiempoRestante() { return tiempoRestante; }
+    public void setTiempoRestante(int tiempoRestante) { this.tiempoRestante = tiempoRestante; }
+    public EnumEstadoProceso getEstado() { return estado; }
+    public void setEstado(EnumEstadoProceso estado) { this.estado = estado; }
+    public int getTiempoInicio() { return tiempoInicio; }
+    public void setTiempoInicio(int tiempoInicio) { this.tiempoInicio = tiempoInicio; }
+    public int getTiempoFin() { return tiempoFin; }
+    public void setTiempoFin(int tiempoFin) { this.tiempoFin = tiempoFin; }
+    public int getQuantumPersonal() { return quantumPersonal; }
+    public void setQuantumPersonal(int quantumPersonal) { this.quantumPersonal = quantumPersonal; }
+    
+    // ======================
+    // GETTERS Y SETTERS PARA E/S (UNA SOLA)
+    // ======================
+    public int getMomentoES() { return momentoES; }
+    public void setMomentoES(int momentoES) { this.momentoES = momentoES; }
+    
+    public int getDuracionES() { return duracionES; }
+    public void setDuracionES(int duracionES) { this.duracionES = duracionES; }
+    
+    public int getTiempoEjecutadoAcumulado() { return tiempoEjecutadoAcumulado; }
+    public void setTiempoEjecutadoAcumulado(int tiempoEjecutadoAcumulado) { 
+        this.tiempoEjecutadoAcumulado = tiempoEjecutadoAcumulado; 
+    }
+    
+    public int getTiempoESRestante() { return tiempoESRestante; }
+    public void setTiempoESRestante(int tiempoESRestante) { 
+        this.tiempoESRestante = tiempoESRestante; 
+    }
+    
+    public boolean isEnES() { return enES; }
+    public void setEnES(boolean enES) { this.enES = enES; }
+    
+    public boolean isEsEjecutada() { return esEjecutada; }
+    public void setEsEjecutada(boolean esEjecutada) { this.esEjecutada = esEjecutada; }
+    
+    // ======================
+    // MÉTODOS DE LÓGICA E/S (UNA SOLA)
+    // ======================
+    
+    /**
+     * Verifica si el proceso debe ir a E/S en este momento
+     * Condición: No está ya en E/S, NO se ha ejecutado antes, y ha ejecutado suficiente tiempo
+     */
+    public boolean debeIrAES() {
+        return !enES && 
+               !esEjecutada &&         // Solo si NO se ha ejecutado antes
+               momentoES > 0 &&        // Tiene E/S configurada
+               tiempoEjecutadoAcumulado >= momentoES; // Ha ejecutado suficiente
+    }
+    
+    /**
+     * Inicia la operación de E/S (solo una vez)
+     */
+    public void iniciarES() {
+        this.enES = true;
+        this.esEjecutada = true;       // Marcar como ejecutada (solo una vez)
+        this.tiempoESRestante = duracionES;
+        this.estado = EnumEstadoProceso.BLOQUEADO_ES;
+    }
+    
+    /**
+     * Actualiza el tiempo de E/S (se llama cada tick cuando está en E/S)
+     * @return true si terminó la E/S, false si aún continúa
+     */
+    public boolean tickES() {
+        if (tiempoESRestante > 0) {
+            tiempoESRestante--;
+            if (tiempoESRestante == 0) {
+                terminarES();
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Termina la operación de E/S
+     */
+    public void terminarES() {
+        this.enES = false;
+        this.estado = EnumEstadoProceso.LISTO;
+    }
+    
+    /**
+     * Incrementa el tiempo ejecutado acumulado
+     */
+    public void incrementarTiempoEjecutado() {
+        this.tiempoEjecutadoAcumulado++;
+    }
+    
+    /**
+     * Verifica si el proceso tiene E/S configurada
+     */
+    public boolean tieneES() {
+        return momentoES > 0 && duracionES > 0;
     }
 
-    // Verifica si el proceso ya terminó
-    public boolean esTerminado() {
+    // ======================
+    // UTILIDAD
+    // ======================
+    public boolean estaTerminado() {
         return tiempoRestante <= 0;
     }
 
-    // Verifica si en este momento exacto el proceso debe irse a Bloqueado (E/S)
-    // Se cumple si: no ha terminado E/S, tiene una E/S configurada, y llegó el momento justo
-    public boolean debeHacerES() {
-        // Ejemplo: Si operacionES es 3, y tiempoEjecutado es 3, toca ir a E/S
-        return (duracionES > 0) && (tiempoEjecutado == operacionES);
+    @Override
+    public String toString() {
+        String esInfo = tieneES() ? 
+            String.format(", E/S=después de %dms por %dms", momentoES, duracionES) : 
+            ", sin E/S";
+            
+        return "P" + id +
+               " (llegada=" + tiempoLlegada +
+               ", rafaga=" + rafagaCPU +
+               ", estado=" + estado + esInfo + ")";
     }
 
-    public Float getTiempoRestante() {
-        return this.tiempoRestante;
+    public int getQuantumUsado(PoliticaQuantum politica) {
+        return politica.obtenerQuantum(this);
     }
-
-    public void setTiempoRestante(Float tiempoRestante) {
-        this.tiempoRestante = tiempoRestante;
-    }
-
-    public Float getTiempoEnES() {
-        return this.tiempoEnES;
-    }
-
-    public void setTiempoEnES(Float tiempoEnES) {
-        this.tiempoEnES = tiempoEnES;
-    }
-
-    public Float getTiempoEjecutado() {
-        return this.tiempoEjecutado;
-    }
-
-    public void setTiempoEjecutado(Float tiempoEjecutado) {
-        this.tiempoEjecutado = tiempoEjecutado;
-    }
-
-    public Float getTiempoEspera() {
-        return this.tiempoEspera;
-    }
-
-    public void setTiempoEspera(Float tiempoEspera) {
-        this.tiempoEspera = tiempoEspera;
-    }
-
-    public Color getColor() {
-        return this.color;
-    }
-
-    public void setColor(Color color) {
-        this.color = color;
-    }
-
-    public String getId() {
-        return this.id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getNombre() {
-        return this.nombre;
-    }
-
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
-    public Integer getQuantum() {
-        return this.quantum;
-    }
-
-    public void setQuantum(Integer quantum) {
-        this.quantum = quantum;
-    }
-
-    public Float getTiempoLlegada() {
-        return this.tiempoLlegada;
-    }
-
-    public void setTiempoLlegada(Float tiempoLlegada) {
-        this.tiempoLlegada = tiempoLlegada;
-    }
-
-    public Float getTiempoEjecucion() {
-        return this.tiempoEjecucion;
-    }
-
-    public void setTiempoEjecucion(Float tiempoEjecucion) {
-        this.tiempoEjecucion = tiempoEjecucion;
-    }
-
-    public Float getOperacionES() {
-        return this.operacionES;
-    }
-
-    public void setOperacionES(Float operacionES) {
-        this.operacionES = operacionES;
-    }
-
-    public Float getDuracionES() {
-        return this.duracionES;
-    }
-
-    public void setDuracionES(Float duracionES) {
-        this.duracionES = duracionES;
-    }
-
 }
