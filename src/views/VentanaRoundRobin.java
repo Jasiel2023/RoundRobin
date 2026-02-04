@@ -423,7 +423,7 @@ public class VentanaRoundRobin extends JFrame {
         for (Proceso p : scheduler.getHistorialCPL()) {
             if (p == null) continue;
             
-            JLabel lbl = crearEtiquetaProceso(p.getId(), p.getEstado());
+            JLabel lbl = crearEtiquetaProceso(p);
             panelHistorialCola.add(lbl);
         }
         
@@ -431,12 +431,12 @@ public class VentanaRoundRobin extends JFrame {
         panelHistorialCola.repaint();
     }
     
-    private JLabel crearEtiquetaProceso(int id, EnumEstadoProceso estado) {
-        JLabel lbl = new JLabel("P" + id);
+    private JLabel crearEtiquetaProceso(Proceso proceso) {
+        JLabel lbl = new JLabel("P" + proceso.getId());
         lbl.setOpaque(true);
         
-        // Color rojo si está bloqueado o terminado, verde si está en lista
-        if (estado == EnumEstadoProceso.BLOQUEADO_ES || estado == EnumEstadoProceso.TERMINADO) {
+        // Color rojo si ha sido bloqueado alguna vez, verde si nunca fue bloqueado
+        if (proceso.fueBloqueadoAlgunaVez() || proceso.getEstado() == EnumEstadoProceso.TERMINADO) {
             lbl.setBackground(new Color(255, 100, 100)); // Rojo
         } else {
             lbl.setBackground(new Color(200, 255, 200)); // Verde
