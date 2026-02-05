@@ -14,9 +14,9 @@ public class ProcesoTableModel extends AbstractTableModel {
     private int quantumGlobal = 1; // valor por defecto, cámbialo desde la vista
 
     private final String[] columnas = {
-        "ID", "Llegada", "Ráfaga", "Quantum",
-        "O E/S", "Dur. O E/S",
-        "Estado", "Restante"
+            "ID", "Llegada", "Ráfaga", "Quantum",
+            "O E/S", "Dur. O E/S",
+            "Estado", "Restante"
     };
 
     public ProcesoTableModel() {
@@ -45,13 +45,12 @@ public class ProcesoTableModel extends AbstractTableModel {
         // 3) Si tiene E/S (los que tienen E/S después)
         // ======================
         procesos.sort(Comparator
-            .comparingInt(Proceso::getTiempoLlegada)
-            .thenComparingInt(pr -> {
-                int q = pr.getQuantumPersonal();
-                return (q == -1) ? quantumGlobal : q;
-            })
-            .thenComparingInt(pr -> pr.getMomentoES() > 0 ? 1 : 0)
-        );
+                .comparingInt(Proceso::getTiempoLlegada)
+                .thenComparingInt(pr -> {
+                    int q = pr.getQuantumPersonal();
+                    return (q == -1) ? quantumGlobal : q;
+                })
+                .thenComparingInt(pr -> pr.getMomentoES() > 0 ? 1 : 0));
 
         fireTableDataChanged();
     }
@@ -127,14 +126,27 @@ public class ProcesoTableModel extends AbstractTableModel {
         fireTableDataChanged();
     }
 
+    public void actualizarProceso(int fila, Proceso p) {
+        if (fila >= 0 && fila < procesos.size()) {
+            procesos.set(fila, p);
+            fireTableRowsUpdated(fila, fila);
+        }
+    }
+
+    public void eliminarProceso(int fila) {
+        if (fila >= 0 && fila < procesos.size()) {
+            procesos.remove(fila);
+            fireTableRowsDeleted(fila, fila);
+        }
+    }
+
     public void limpiar() {
         if (!procesos.isEmpty()) {
             int lastIndex = procesos.size() - 1;
             procesos.clear();
-            fireTableRowsDeleted(0, lastIndex);  // Notifica a la tabla
+            fireTableRowsDeleted(0, lastIndex); // Notifica a la tabla
             System.out.println("[DEBUG] Tabla limpiada: " + lastIndex + " procesos eliminados");
         }
     }
 
-    
 }

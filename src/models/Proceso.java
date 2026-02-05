@@ -14,8 +14,6 @@ public class Proceso {
     private final String momentosESOriginal;
     private final String duracionesESOriginal;
 
-
-
     private int tiempoRestante;
     private int tiempoInicio = -1;
     private int tiempoFin = -1;
@@ -26,15 +24,14 @@ public class Proceso {
     // SOPORTE PARA MÚLTIPLES E/S
     // ======================
     private List<OperacionES> operacionesES = new ArrayList<>();
-    private int indiceESActual = 0;        // Qué E/S toca ejecutar
-    
-    
+    private int indiceESActual = 0; // Qué E/S toca ejecutar
+
     private int tiempoEjecutadoAcumulado = 0;
     private int tiempoESRestante = 0;
     private boolean enES = false;
-    private boolean fueBloqueadoAlgunaVez = false;  // Bandera para marcar si pasó por E/S
+    private boolean fueBloqueadoAlgunaVez = false; // Bandera para marcar si pasó por E/S
 
-        // En Proceso.java
+    // En Proceso.java
 
     // ======================
     // CONSTRUCTORES
@@ -48,7 +45,7 @@ public class Proceso {
         this.tiempoRestante = rafagaCPU;
         this.estado = EnumEstadoProceso.NUEVO;
         this.momentosESOriginal = momentosESOriginal;
-        this.duracionesESOriginal= duracionesESOriginal;
+        this.duracionesESOriginal = duracionesESOriginal;
     }
 
     public Proceso(int tiempoLlegada, int rafagaCPU, List<OperacionES> operacionesES) {
@@ -68,42 +65,108 @@ public class Proceso {
             this.duracionesESOriginal = "-";
         } else {
             this.momentosESOriginal = operacionesES.stream()
-                .map(op -> String.valueOf(op.getMomentoCPU()))
-                .reduce((a, b) -> a + "-" + b)
-                .orElse("No");
+                    .map(op -> String.valueOf(op.getMomentoCPU()))
+                    .reduce((a, b) -> a + "-" + b)
+                    .orElse("No");
 
             this.duracionesESOriginal = operacionesES.stream()
-                .map(op -> String.valueOf(op.getDuracion()))
-                .reduce((a, b) -> a + "-" + b)
-                .orElse("-");
+                    .map(op -> String.valueOf(op.getDuracion()))
+                    .reduce((a, b) -> a + "-" + b)
+                    .orElse("-");
         }
     }
 
+    // Constructor para edición (conserva el ID original)
+    public Proceso(int idOriginal, int tiempoLlegada, int rafagaCPU, List<OperacionES> operacionesES) {
+        this.id = idOriginal; // Usar el ID original, no incrementar contador
+        this.tiempoLlegada = tiempoLlegada;
+        this.rafagaCPU = rafagaCPU;
+        this.tiempoRestante = rafagaCPU;
+        this.estado = EnumEstadoProceso.NUEVO;
+
+        if (operacionesES != null) {
+            this.operacionesES.addAll(operacionesES);
+        }
+
+        // Guardar versión "de presentación"
+        if (operacionesES == null || operacionesES.isEmpty()) {
+            this.momentosESOriginal = "No";
+            this.duracionesESOriginal = "-";
+        } else {
+            this.momentosESOriginal = operacionesES.stream()
+                    .map(op -> String.valueOf(op.getMomentoCPU()))
+                    .reduce((a, b) -> a + "-" + b)
+                    .orElse("No");
+
+            this.duracionesESOriginal = operacionesES.stream()
+                    .map(op -> String.valueOf(op.getDuracion()))
+                    .reduce((a, b) -> a + "-" + b)
+                    .orElse("-");
+        }
+    }
 
     // ======================
     // GETTERS / SETTERS BASE
     // ======================
-    public int getId() { return id; }
-    public int getTiempoLlegada() { return tiempoLlegada; }
-    public int getRafagaCPU() { return rafagaCPU; }
-    public int getTiempoRestante() { return tiempoRestante; }
-    public void setTiempoRestante(int tiempoRestante) { this.tiempoRestante = tiempoRestante; }
-    public EnumEstadoProceso getEstado() { return estado; }
-    public void setEstado(EnumEstadoProceso estado) { this.estado = estado; }
-    public int getTiempoInicio() { return tiempoInicio; }
-    public void setTiempoInicio(int tiempoInicio) { this.tiempoInicio = tiempoInicio; }
-    public int getTiempoFin() { return tiempoFin; }
-    public void setTiempoFin(int tiempoFin) { this.tiempoFin = tiempoFin; }
-    public int getQuantumPersonal() { return quantumPersonal; }
-    public void setQuantumPersonal(int quantumPersonal) { this.quantumPersonal = quantumPersonal; }
+    public int getId() {
+        return id;
+    }
+
+    public int getTiempoLlegada() {
+        return tiempoLlegada;
+    }
+
+    public int getRafagaCPU() {
+        return rafagaCPU;
+    }
+
+    public int getTiempoRestante() {
+        return tiempoRestante;
+    }
+
+    public void setTiempoRestante(int tiempoRestante) {
+        this.tiempoRestante = tiempoRestante;
+    }
+
+    public EnumEstadoProceso getEstado() {
+        return estado;
+    }
+
+    public void setEstado(EnumEstadoProceso estado) {
+        this.estado = estado;
+    }
+
+    public int getTiempoInicio() {
+        return tiempoInicio;
+    }
+
+    public void setTiempoInicio(int tiempoInicio) {
+        this.tiempoInicio = tiempoInicio;
+    }
+
+    public int getTiempoFin() {
+        return tiempoFin;
+    }
+
+    public void setTiempoFin(int tiempoFin) {
+        this.tiempoFin = tiempoFin;
+    }
+
+    public int getQuantumPersonal() {
+        return quantumPersonal;
+    }
+
+    public void setQuantumPersonal(int quantumPersonal) {
+        this.quantumPersonal = quantumPersonal;
+    }
+
     public String getMomentosESOriginal() {
-    return momentosESOriginal;
+        return momentosESOriginal;
     }
 
     public String getDuracionesESOriginal() {
         return duracionesESOriginal;
     }
-
 
     public int getTiempoEjecutadoAcumulado() {
         return tiempoEjecutadoAcumulado;
@@ -117,8 +180,10 @@ public class Proceso {
      * Verifica si debe entrar a E/S según el tiempo de CPU acumulado
      */
     public boolean debeIrAES() {
-        if (enES) return false;
-        if (indiceESActual >= operacionesES.size()) return false;
+        if (enES)
+            return false;
+        if (indiceESActual >= operacionesES.size())
+            return false;
 
         OperacionES op = operacionesES.get(indiceESActual);
         return !op.isEjecutada() && tiempoEjecutadoAcumulado >= op.getMomentoCPU();
@@ -128,7 +193,8 @@ public class Proceso {
      * Inicia la siguiente E/S
      */
     public void iniciarES() {
-        if (indiceESActual >= operacionesES.size()) return;
+        if (indiceESActual >= operacionesES.size())
+            return;
 
         OperacionES op = operacionesES.get(indiceESActual);
         op.marcarEjecutada();
@@ -136,11 +202,12 @@ public class Proceso {
         this.enES = true;
         this.tiempoESRestante = op.getDuracion();
         this.estado = EnumEstadoProceso.BLOQUEADO_ES;
-        this.fueBloqueadoAlgunaVez = true;  // Marcar que ha sido bloqueado
+        this.fueBloqueadoAlgunaVez = true; // Marcar que ha sido bloqueado
     }
 
     /**
      * Tick de E/S
+     * 
      * @return true si terminó la E/S
      */
     public boolean tickES() {
@@ -184,18 +251,18 @@ public class Proceso {
     @Override
     public String toString() {
         return "P" + id +
-               " (llegada=" + tiempoLlegada +
-               ", rafaga=" + rafagaCPU +
-               ", estado=" + estado +
-               ", ejecutadoCPU=" + tiempoEjecutadoAcumulado +
-               ", E/S restantes=" + (operacionesES.size() - indiceESActual) + ")";
+                " (llegada=" + tiempoLlegada +
+                ", rafaga=" + rafagaCPU +
+                ", estado=" + estado +
+                ", ejecutadoCPU=" + tiempoEjecutadoAcumulado +
+                ", E/S restantes=" + (operacionesES.size() - indiceESActual) + ")";
     }
 
     public int getQuantumUsado(PoliticaQuantum politica) {
         return politica.obtenerQuantum(this);
     }
 
-        // Devuelve la duración de la E/S actual (si existe)
+    // Devuelve la duración de la E/S actual (si existe)
     public int getDuracionESActual() {
         if (indiceESActual < operacionesES.size()) {
             return operacionesES.get(indiceESActual).getDuracion();
@@ -209,7 +276,7 @@ public class Proceso {
     }
 
     public int getDuracionES() {
-    return getDuracionESActual();
+        return getDuracionESActual();
     }
 
     // ¿Está actualmente en E/S?
@@ -218,15 +285,75 @@ public class Proceso {
     }
 
     public int getMomentoES() {
-    if (indiceESActual < operacionesES.size()) {
-        return operacionesES.get(indiceESActual).getMomentoCPU();
-    }
-    return 0;
+        if (indiceESActual < operacionesES.size()) {
+            return operacionesES.get(indiceESActual).getMomentoCPU();
+        }
+        return 0;
     }
 
     // Getter para saber si ha sido bloqueado alguna vez
     public boolean fueBloqueadoAlgunaVez() {
         return fueBloqueadoAlgunaVez;
+    }
+
+    /**
+     * Calcula la duración total de todas las operaciones E/S del proceso
+     * 
+     * @return suma de las duraciones de todas las operaciones E/S
+     */
+    public int getDuracionTotalES() {
+        return operacionesES.stream()
+                .mapToInt(OperacionES::getDuracion)
+                .sum();
+    }
+
+    /**
+     * Calcula el tiempo de espera del proceso
+     * Fórmula: Tiempo de espera = tiempoFin - tiempoLlegada - rafagaCPU -
+     * duracionTotalES
+     * 
+     * @return tiempo de espera del proceso, o -1 si el proceso no ha terminado
+     */
+    public int calcularTiempoEspera() {
+        if (tiempoFin == -1) {
+            return -1; // Proceso no ha terminado
+        }
+        return tiempoFin - tiempoLlegada - rafagaCPU - getDuracionTotalES();
+    }
+
+    /**
+     * Calcula el tiempo de ejecución (turnaround time) del proceso
+     * Fórmula: Tiempo de ejecución = tiempoFin - tiempoLlegada
+     * 
+     * @return tiempo de ejecución del proceso, o -1 si el proceso no ha terminado
+     */
+    public int calcularTiempoEjecucion() {
+        if (tiempoFin == -1) {
+            return -1; // Proceso no ha terminado
+        }
+        return tiempoFin - tiempoLlegada;
+    }
+
+    /**
+     * Reinicia todos los estados del proceso para una nueva simulación.
+     * Mantiene los datos originales (id, llegada, ráfaga, operaciones E/S)
+     * pero reinicia todo el estado de ejecución.
+     */
+    public void reiniciarParaSimulacion() {
+        this.tiempoRestante = this.rafagaCPU;
+        this.tiempoInicio = -1;
+        this.tiempoFin = -1;
+        this.estado = EnumEstadoProceso.NUEVO;
+        this.indiceESActual = 0;
+        this.tiempoEjecutadoAcumulado = 0;
+        this.tiempoESRestante = 0;
+        this.enES = false;
+        this.fueBloqueadoAlgunaVez = false;
+
+        // Reiniciar todas las operaciones E/S
+        for (OperacionES op : operacionesES) {
+            op.reiniciar();
+        }
     }
 
     public static void reiniciarContadorGlobal() {
