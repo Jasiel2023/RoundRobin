@@ -161,45 +161,46 @@ public class VentanaRoundRobin extends JFrame {
         // Crear paneles de estado
         crearPanelesDeEstado();
 
-        // Panel de estados (cola, E/S, CPU) en un scroll
-        JPanel panelEstados = crearPanelEstados();
-        JScrollPane scrollEstados = new JScrollPane(panelEstados);
-        scrollEstados.setPreferredSize(new Dimension(880, 280));
+        // Panel combinado con todos los estados y tiempos
+        JPanel panelTodosCombinado = new JPanel();
+        panelTodosCombinado.setLayout(new BoxLayout(panelTodosCombinado, BoxLayout.Y_AXIS));
+        panelTodosCombinado.add(panelHistorialCola);
+        panelTodosCombinado.add(Box.createVerticalStrut(5));
+        panelTodosCombinado.add(panelES);
+        panelTodosCombinado.add(Box.createVerticalStrut(5));
+        panelTodosCombinado.add(panelCPU);
+        panelTodosCombinado.add(Box.createVerticalStrut(5));
+        panelTodosCombinado.add(panelTiempos);
 
-        // Panel combinado de tiempos de espera y ejecución
-        panelTiempos = crearPanelConTitulo("Tiempos de espera y ejecución", 850, 150);
-        panelTiempos.setLayout(new BorderLayout());
+        // Un único scroll para todo
+        JScrollPane scrollCombinado = new JScrollPane(panelTodosCombinado);
+        scrollCombinado.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollCombinado.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollCombinado.getVerticalScrollBar().setUnitIncrement(16);
 
-        // Panel central (tabla + estados)
+        // Panel central (tabla + panel combinado)
         JPanel panelCentro = new JPanel(new BorderLayout(5, 5));
         panelCentro.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         panelCentro.add(scroll, BorderLayout.NORTH);
-        panelCentro.add(scrollEstados, BorderLayout.CENTER);
-        panelCentro.add(panelTiempos, BorderLayout.SOUTH);
+        panelCentro.add(scrollCombinado, BorderLayout.CENTER);
 
         add(panelCentro, BorderLayout.CENTER);
     }
 
     private void crearPanelesDeEstado() {
-        panelHistorialCola = crearPanelConTitulo("Historial de cola de listos", 850, 100);
+        panelHistorialCola = crearPanelConTitulo("Historial de Cola de Listos", 850, 100);
         panelES = crearPanelConTitulo("Operaciones de Entrada/Salida (Historial)", 850, 100);
         panelCPU = crearPanelConTitulo("CPU - Historial de ejecución", 850, 100);
+        panelTiempos = crearPanelConTitulo("Tiempos de Espera y Ejecución", 850, 150);
+        panelTiempos.setLayout(new BorderLayout());
     }
 
     private JPanel crearPanelConTitulo(String titulo, int ancho, int alto) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panel.setBorder(BorderFactory.createTitledBorder(titulo));
         panel.setPreferredSize(new Dimension(ancho, alto));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, alto));
         return panel;
-    }
-
-    private JPanel crearPanelEstados() {
-        JPanel panelEstados = new JPanel(new GridLayout(3, 1, 5, 5));
-        panelEstados.setPreferredSize(new Dimension(850, 320));
-        panelEstados.add(panelHistorialCola);
-        panelEstados.add(panelES);
-        panelEstados.add(panelCPU);
-        return panelEstados;
     }
 
     private void configurarListeners() {
