@@ -8,7 +8,6 @@ import java.util.Map;
 import javax.swing.*;
 import logic.PlanificadorRoundRobin;
 import logic.PoliticaQuantum;
-import logic.QuantumFijo;
 import models.EnumEstadoProceso;
 import models.OperacionES;
 import models.Proceso;
@@ -23,10 +22,10 @@ public class VentanaRoundRobin extends JFrame {
     private JTextField txtLlegada, txtRafaga, txtQuantum, txtQuantumProceso;
     private JTextField txtIntervaloES, txtDuracionES; // Campos para E/S
     private JComboBox<String> comboTipoRR;
-    private JLabel lblQuantumFijo, lblQuantumProceso;
+    private JLabel lblQuantumProceso;
 
     // Paneles de visualización
-    private JPanel panelHistorialCola, panelES, panelCPU;
+    private JPanel panelHistorialCola, panelES, panelCPU, panelTiempos;
 
     // Botones de control
     private JButton btnAgregar, btnEditar, btnEliminar, btnIniciar, btnPausa, btnReiniciar;
@@ -59,7 +58,6 @@ public class VentanaRoundRobin extends JFrame {
         crearPanelFormulario();
         crearPanelVisualizacion();
         configurarListeners();
-        actualizarVistaQuantum(); // Estado inicial
         setVisible(true);
     }
 
@@ -99,24 +97,21 @@ public class VentanaRoundRobin extends JFrame {
     }
 
     private void inicializarComponentesFormulario() {
-        // Campos de texto
+        // 1. Campos de texto (Primero dales vida con 'new')
         txtLlegada = new JTextField(5);
         txtRafaga = new JTextField(5);
-        txtQuantum = new JTextField(5);
-        txtQuantumProceso = new JTextField(5);
+        txtQuantumProceso = new JTextField(5); // <-- Asegúrate que esta línea esté
         txtIntervaloES = new JTextField(5);
         txtDuracionES = new JTextField(5);
 
-        // Combo box
-        comboTipoRR = new JComboBox<>(new String[] {
-                "Quantum fijo", "Quantum por proceso"
-        });
+        // 2. Etiquetas (Dales vida con 'new')
+        lblQuantumProceso = new JLabel("Quantum:"); // <-- ESTA LÍNEA DEBE IR ANTES QUE EL SETVISIBLE
 
-        // Etiquetas
-        lblQuantumFijo = new JLabel("Quantum fijo:");
-        lblQuantumProceso = new JLabel("Quantum proceso:");
+        // 3. Ahora sí puedes llamar a métodos del objeto
+        lblQuantumProceso.setVisible(true);
+        txtQuantumProceso.setVisible(true);
 
-        // Botones
+        // 4. Botones
         btnAgregar = new JButton("Agregar proceso");
         btnEditar = new JButton("Editar proceso");
         btnEliminar = new JButton("Eliminar proceso");
@@ -126,27 +121,26 @@ public class VentanaRoundRobin extends JFrame {
     }
 
     private void agregarComponentesAlFormulario(JPanel panelForm) {
-        // Tipo RR
-        panelForm.add(new JLabel("Tipo RR:"));
-        panelForm.add(comboTipoRR);
+        panelForm.removeAll(); // Limpia cualquier residuo previo
 
-        // Llegada y ráfaga
+        // Fila 1: Datos básicos
         panelForm.add(new JLabel("Llegada:"));
         panelForm.add(txtLlegada);
         panelForm.add(new JLabel("Ráfaga:"));
         panelForm.add(txtRafaga);
 
-        // Campos E/S
-        panelForm.add(new JLabel("Momentos E/S (ej: 1-3-5):"));
+        // Fila 2: El Quantum (Bien etiquetado)
+        panelForm.add(new JLabel("Quantum:")); // Etiqueta simple y directa
+        panelForm.add(txtQuantumProceso);
+
+        // Fila 3: Entrada / Salida
+        panelForm.add(new JLabel("Momentos E/S (ej: 1-3):"));
         panelForm.add(txtIntervaloES);
-        panelForm.add(new JLabel("Duraciones E/S (ej: 2-3-4):"));
+        panelForm.add(new JLabel("Duración E/S (ej: 2-4):"));
         panelForm.add(txtDuracionES);
 
-        // Quantum
-        panelForm.add(lblQuantumFijo);
-        panelForm.add(txtQuantum);
-        panelForm.add(lblQuantumProceso);
-        panelForm.add(txtQuantumProceso);
+        panelForm.revalidate();
+        panelForm.repaint();
     }
 
     private void crearPanelVisualizacion() {
@@ -161,16 +155,28 @@ public class VentanaRoundRobin extends JFrame {
         // Crear paneles de estado
         crearPanelesDeEstado();
 
-        // Panel de estados (cola, E/S, CPU) en un scroll
-        JPanel panelEstados = crearPanelEstados();
-        JScrollPane scrollEstados = new JScrollPane(panelEstados);
-        scrollEstados.setPreferredSize(new Dimension(880, 350));
+        // Panel combinado con todos los estados y tiempos
+        JPanel panelTodosCombinado = new JPanel();
+        panelTodosCombinado.setLayout(new BoxLayout(panelTodosCombinado, BoxLayout.Y_AXIS));
+        panelTodosCombinado.add(panelHistorialCola);
+        panelTodosCombinado.add(Box.createVerticalStrut(5));
+        panelTodosCombinado.add(panelES);
+        panelTodosCombinado.add(Box.createVerticalStrut(5));
+        panelTodosCombinado.add(panelCPU);
+        panelTodosCombinado.add(Box.createVerticalStrut(5));
+        panelTodosCombinado.add(panelTiempos);
 
-        // Panel central (tabla + estados)
+        // Un único scroll para todo
+        JScrollPane scrollCombinado = new JScrollPane(panelTodosCombinado);
+        scrollCombinado.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollCombinado.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollCombinado.getVerticalScrollBar().setUnitIncrement(16);
+
+        // Panel central (tabla + panel combinado)
         JPanel panelCentro = new JPanel(new BorderLayout(5, 5));
         panelCentro.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         panelCentro.add(scroll, BorderLayout.NORTH);
-        panelCentro.add(scrollEstados, BorderLayout.CENTER);
+        panelCentro.add(scrollCombinado, BorderLayout.CENTER);
 
         add(panelCentro, BorderLayout.CENTER);
     }
@@ -179,22 +185,16 @@ public class VentanaRoundRobin extends JFrame {
         panelHistorialCola = crearPanelConTitulo("Historial de Cola de Listos", 850, 100);
         panelES = crearPanelConTitulo("Operaciones de Entrada/Salida (Historial)", 850, 100);
         panelCPU = crearPanelConTitulo("CPU - Historial de ejecución", 850, 100);
+        panelTiempos = crearPanelConTitulo("Tiempos de Espera y Ejecución", 850, 150);
+        panelTiempos.setLayout(new BorderLayout());
     }
 
     private JPanel crearPanelConTitulo(String titulo, int ancho, int alto) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panel.setBorder(BorderFactory.createTitledBorder(titulo));
         panel.setPreferredSize(new Dimension(ancho, alto));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, alto));
         return panel;
-    }
-
-    private JPanel crearPanelEstados() {
-        JPanel panelEstados = new JPanel(new GridLayout(3, 1, 5, 5));
-        panelEstados.setPreferredSize(new Dimension(850, 320));
-        panelEstados.add(panelHistorialCola);
-        panelEstados.add(panelES);
-        panelEstados.add(panelCPU);
-        return panelEstados;
     }
 
     private void configurarListeners() {
@@ -204,7 +204,6 @@ public class VentanaRoundRobin extends JFrame {
         btnIniciar.addActionListener(e -> iniciarSimulacion());
         btnPausa.addActionListener(e -> togglePausa());
         btnReiniciar.addActionListener(e -> reiniciarTodo());
-        comboTipoRR.addActionListener(e -> actualizarVistaQuantum());
     }
 
     // ======================
@@ -245,7 +244,7 @@ public class VentanaRoundRobin extends JFrame {
                 procesoOriginal.getQuantumPersonal() == -1 ? "" : String.valueOf(procesoOriginal.getQuantumPersonal()));
 
         // Agregar campos al panel
-        panelCampos.add(new JLabel("Tiempo de Llegada:"));
+        panelCampos.add(new JLabel("Tiempo de llegada:"));
         panelCampos.add(txtLlegadaEdit);
         panelCampos.add(new JLabel("Ráfaga CPU:"));
         panelCampos.add(txtRafagaEdit);
@@ -253,7 +252,7 @@ public class VentanaRoundRobin extends JFrame {
         panelCampos.add(txtMomentosESEdit);
         panelCampos.add(new JLabel("Duraciones E/S (ej: 2-3-4):"));
         panelCampos.add(txtDuracionesESEdit);
-        panelCampos.add(new JLabel("Quantum Personal:"));
+        panelCampos.add(new JLabel("Quantum personal:"));
         panelCampos.add(txtQuantumEdit);
         panelCampos.add(new JLabel("(Dejar vacío para usar global)"));
         panelCampos.add(new JLabel(""));
@@ -355,23 +354,17 @@ public class VentanaRoundRobin extends JFrame {
 
     private void agregarProceso() {
         try {
-            // Leer y validar datos básicos
             int llegada = leerEnteroPositivo(txtLlegada.getText(), "Llegada");
             int rafaga = leerEnteroPositivo(txtRafaga.getText(), "Ráfaga", true);
+            int quantum = leerEnteroPositivo(txtQuantumProceso.getText(), "Quantum", true); // Obligatorio
 
-            // Leer operaciones E/S
-            List<OperacionES> listaES = leerOperacionesES();
+            List<OperacionES> listaES = leerOperacionesES(rafaga);
 
-            // Crear proceso
-            Proceso proceso = crearProceso(llegada, rafaga, listaES);
+            Proceso proceso = new Proceso(llegada, rafaga, listaES);
+            proceso.setEstado(EnumEstadoProceso.NUEVO);
+            proceso.setQuantumPersonal(quantum); // Asignamos el quantum leído
 
-            // Configurar quantum personal si es necesario
-            configurarQuantumPersonal(proceso);
-
-            // Agregar a la tabla
             tableModel.agregarProceso(proceso);
-
-            // Limpiar campos
             limpiarCamposFormulario();
 
         } catch (NumberFormatException ex) {
@@ -390,8 +383,47 @@ public class VentanaRoundRobin extends JFrame {
         }
         return valor;
     }
-    
-    
+
+    private List<OperacionES> leerOperacionesES(int rafagaTotal) {
+    String textoMomentos = txtIntervaloES.getText().trim();
+    String textoDuraciones = txtDuracionES.getText().trim();
+
+    if (textoMomentos.isEmpty() && textoDuraciones.isEmpty()) {
+        return new ArrayList<>();
+    }
+
+    String[] momentos = textoMomentos.split("-");
+    String[] duraciones = textoDuraciones.split("-");
+
+    if (momentos.length != duraciones.length) {
+        throw new NumberFormatException("La cantidad de momentos y duraciones no coincide.");
+    }
+
+    List<OperacionES> listaES = new ArrayList<>();
+    int ultimoMomento = -1; // Para validar que sean secuenciales
+
+    for (int i = 0; i < momentos.length; i++) {
+        int momento = leerEnteroPositivo(momentos[i], "Momento E/S", true);
+        int duracion = leerEnteroPositivo(duraciones[i], "Duración E/S", true);
+
+        // 1. VALIDACIÓN: No mayores a la ráfaga
+        if (momento >= rafagaTotal) {
+            throw new NumberFormatException("El momento E/S (" + momento + 
+                ") no puede ser mayor o igual a la ráfaga total (" + rafagaTotal + ").");
+        }
+
+        // 2. VALIDACIÓN: Secuenciales y no repetidos
+        if (momento <= ultimoMomento) {
+            throw new NumberFormatException("Los momentos de E/S de valor distinto y de orden creciente (ej: 1-2-4)" +
+                "(Error en: " + momento + ").");
+        }
+
+        listaES.add(new OperacionES(momento, duracion));
+        ultimoMomento = momento;
+    }
+
+    return listaES;
+}
     private Proceso crearProceso(int llegada, int rafaga, List<OperacionES> listaES) {
         Proceso proceso = new Proceso(llegada, rafaga, listaES);
         proceso.setEstado(EnumEstadoProceso.NUEVO);
@@ -420,57 +452,29 @@ public class VentanaRoundRobin extends JFrame {
     }
 
     private void iniciarSimulacion() {
-    try {
-        if (tableModel.getRowCount() == 0) {
-            JOptionPane.showMessageDialog(this, "No hay procesos para ejecutar.");
-            return;
-        }
+        try {
+            if (tableModel.getRowCount() == 0) {
+                JOptionPane.showMessageDialog(this, "No hay procesos para ejecutar.");
+                return;
+            }
 
-        // 1. BLOQUEO DE INTERFAZ
-        setEstadoControles(false); 
-        btnPausa.setEnabled(true);
-        btnIniciar.setEnabled(false);
-        btnIniciar.setText("Ejecutando...");
+            PoliticaQuantum politica = new logic.QuantumPorProceso();
 
-        // 2. LIMPIEZA DE PANELES VISUALES
-        limpiarPanel(panelHistorialCola);
-        limpiarPanel(panelES);
-        limpiarPanel(panelCPU);
+            // --- BLOQUEO AQUÍ ---
+            setEstadoEdicion(false); 
+            btnPausa.setEnabled(true); // El botón de pausa debe quedar activo
+            btnIniciar.setText("Ejecutando...");
 
-        // 3. PREPARAR PROCESOS
-        List<Proceso> procesosCargados = tableModel.getProcesos();
-        for (Proceso p : procesosCargados) {
-            p.restaurarEstadoInicial();
-        }
-        tableModel.actualizarTabla();
+            for (Proceso p : tableModel.getProcesos()) {
+                p.reiniciarParaSimulacion();
+            }
 
-        // 4. CONFIGURAR PLANIFICADOR
-        PoliticaQuantum politica = crearPoliticaQuantum();
-        scheduler = new PlanificadorRoundRobin(procesosCargados, politica);
-        
-        iniciarTimerSimulacion();
+            scheduler = new PlanificadorRoundRobin(tableModel.getProcesos(), politica);
+            iniciarTimerSimulacion();
 
-    } catch (NumberFormatException ex) {
-        setEstadoControles(true); // Liberar si hubo error en datos
-        btnIniciar.setEnabled(true);
-        btnIniciar.setText("Iniciar RR");
-        mostrarErrorValidacion("Error en los datos: " + ex.getMessage());
-    } catch (Exception ex) {
-        setEstadoControles(true);
-        btnIniciar.setEnabled(true);
-        JOptionPane.showMessageDialog(this, "Error inesperado: " + ex.getMessage());
-    }
-}
-
-    private PoliticaQuantum crearPoliticaQuantum() {
-        boolean esFijo = comboTipoRR.getSelectedIndex() == 0;
-
-        if (esFijo) {
-            int quantum = leerEnteroPositivo(txtQuantum.getText(), "Quantum fijo", true);
-            tableModel.setQuantumGlobal(quantum);
-            return new QuantumFijo(quantum);
-        } else {
-            return new logic.QuantumPorProceso();
+        } catch (NumberFormatException ex) {
+            setEstadoEdicion(true); // Si hay error, rehabilitar todo
+            mostrarErrorValidacion("Error en configuración: " + ex.getMessage());
         }
     }
 
@@ -486,16 +490,8 @@ public class VentanaRoundRobin extends JFrame {
 
         if (scheduler.haTerminado()) {
             timer.stop();
-            
-            // --- DESBLOQUEO AUTOMÁTICO AL TERMINAR ---
-            setEstadoControles(true); 
-            btnIniciar.setEnabled(true); 
-            btnIniciar.setText("Reiniciar Simulación");
-            btnPausa.setEnabled(false); // No tiene sentido pausar algo terminado
-            btnPausa.setText("Pausar");
-            enPausa = false;
-            // -----------------------------------------
-            
+            setEstadoEdicion(true); // --- DESBLOQUEO AQUÍ ---
+            btnIniciar.setText("Iniciar RR");
             mostrarMensajeFinalizacion();
         }
     }
@@ -505,6 +501,7 @@ public class VentanaRoundRobin extends JFrame {
         actualizarCPU();
         actualizarHistorialCola();
         actualizarES();
+        actualizarTiempos();
     }
 
     private void mostrarMensajeFinalizacion() {
@@ -698,20 +695,148 @@ public class VentanaRoundRobin extends JFrame {
     }
 
     // ======================
+    // TIEMPOS DE ESPERA Y EJECUCIÓN (COMBINADO)
+    // ======================
+
+    private void actualizarTiempos() {
+        panelTiempos.removeAll();
+
+        List<Proceso> procesos = tableModel.getProcesos();
+
+        if (procesos.isEmpty()) {
+            JLabel lblVacio = new JLabel("No hay procesos registrados", SwingConstants.CENTER);
+            lblVacio.setForeground(Color.GRAY);
+            lblVacio.setFont(new Font("Arial", Font.ITALIC, 12));
+            panelTiempos.add(lblVacio, BorderLayout.CENTER);
+        } else {
+            // Panel con layout vertical para mostrar texto
+            JPanel panelContenido = new JPanel();
+            panelContenido.setLayout(new BoxLayout(panelContenido, BoxLayout.Y_AXIS));
+            panelContenido.setBackground(Color.WHITE);
+            panelContenido.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+
+            int sumaTiemposEspera = 0;
+            int sumaTiemposEjecucion = 0;
+            int procesosTerminados = 0;
+
+            // Título de Tiempos de Espera
+            JLabel lblTituloEspera = new JLabel("TIEMPOS DE ESPERA");
+            lblTituloEspera.setFont(new Font("Monospaced", Font.BOLD, 12));
+            lblTituloEspera.setForeground(new Color(0, 100, 0));
+            lblTituloEspera.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelContenido.add(lblTituloEspera);
+            panelContenido.add(Box.createVerticalStrut(3));
+
+            // Tiempos de espera para cada proceso
+            for (Proceso p : procesos) {
+                int tiempoEspera = p.calcularTiempoEspera();
+                String textoFormula = crearTextoTiempoEspera(p, tiempoEspera);
+
+                JLabel lblFormula = new JLabel(textoFormula);
+                lblFormula.setFont(new Font("Monospaced", Font.PLAIN, 12));
+                lblFormula.setAlignmentX(Component.LEFT_ALIGNMENT);
+                panelContenido.add(lblFormula);
+
+                if (tiempoEspera >= 0) {
+                    sumaTiemposEspera += tiempoEspera;
+                    procesosTerminados++;
+                }
+            }
+
+            // Promedio de espera
+            String textoPromedioEspera = crearTextoPromedio("espera", sumaTiemposEspera, procesosTerminados);
+            JLabel lblPromedioEspera = new JLabel(textoPromedioEspera);
+            lblPromedioEspera.setFont(new Font("Monospaced", Font.BOLD, 12));
+            lblPromedioEspera.setForeground(new Color(0, 100, 0));
+            lblPromedioEspera.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelContenido.add(lblPromedioEspera);
+
+            // Separador entre secciones
+            panelContenido.add(Box.createVerticalStrut(10));
+
+            // Título de Tiempos de Ejecución
+            JLabel lblTituloEjecucion = new JLabel("TIEMPOS DE EJECUCIÓN");
+            lblTituloEjecucion.setFont(new Font("Monospaced", Font.BOLD, 12));
+            lblTituloEjecucion.setForeground(new Color(0, 0, 150));
+            lblTituloEjecucion.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelContenido.add(lblTituloEjecucion);
+            panelContenido.add(Box.createVerticalStrut(3));
+
+            // Tiempos de ejecución para cada proceso
+            for (Proceso p : procesos) {
+                int tiempoEjecucion = p.calcularTiempoEjecucion();
+                String textoFormula = crearTextoTiempoEjecucion(p, tiempoEjecucion);
+
+                JLabel lblFormula = new JLabel(textoFormula);
+                lblFormula.setFont(new Font("Monospaced", Font.PLAIN, 12));
+                lblFormula.setAlignmentX(Component.LEFT_ALIGNMENT);
+                panelContenido.add(lblFormula);
+
+                if (tiempoEjecucion >= 0) {
+                    sumaTiemposEjecucion += tiempoEjecucion;
+                }
+            }
+
+            // Promedio de ejecución
+            String textoPromedioEjecucion = crearTextoPromedio("ejecución", sumaTiemposEjecucion, procesosTerminados);
+            JLabel lblPromedioEjecucion = new JLabel(textoPromedioEjecucion);
+            lblPromedioEjecucion.setFont(new Font("Monospaced", Font.BOLD, 12));
+            lblPromedioEjecucion.setForeground(new Color(0, 0, 150));
+            lblPromedioEjecucion.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelContenido.add(lblPromedioEjecucion);
+
+            JScrollPane scrollContenido = new JScrollPane(panelContenido);
+            scrollContenido.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            scrollContenido.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            scrollContenido.setBorder(null);
+
+            panelTiempos.add(scrollContenido, BorderLayout.CENTER);
+        }
+
+        panelTiempos.revalidate();
+        panelTiempos.repaint();
+    }
+
+    private String crearTextoTiempoEspera(Proceso proceso, int tiempoEspera) {
+        if (tiempoEspera >= 0) {
+            return String.format("P%d = %d - %d - %d - %d = %d ms",
+                    proceso.getId(),
+                    proceso.getTiempoFin(),
+                    proceso.getTiempoLlegada(),
+                    proceso.getRafagaCPU(),
+                    proceso.getDuracionTotalES(),
+                    tiempoEspera);
+        } else {
+            return String.format("P%d = En ejecución...", proceso.getId());
+        }
+    }
+
+    private String crearTextoTiempoEjecucion(Proceso proceso, int tiempoEjecucion) {
+        if (tiempoEjecucion >= 0) {
+            return String.format("P%d = %d - %d = %d ms",
+                    proceso.getId(),
+                    proceso.getTiempoFin(),
+                    proceso.getTiempoLlegada(),
+                    tiempoEjecucion);
+        } else {
+            return String.format("P%d = En ejecución...", proceso.getId());
+        }
+    }
+
+    private String crearTextoPromedio(String tipo, int suma, int procesosTerminados) {
+        if (procesosTerminados > 0) {
+            double promedio = (double) suma / procesosTerminados;
+            return String.format("Promedio %s = (%d) / %d = %.2f ms", tipo, suma, procesosTerminados, promedio);
+        } else {
+            return String.format("Promedio %s = N/A (ningún proceso terminado)", tipo);
+        }
+    }
+
+    // ======================
     // MÉTODOS AUXILIARES
     // ======================
 
-    private void actualizarVistaQuantum() {
-        boolean esFijo = comboTipoRR.getSelectedIndex() == 0;
 
-        lblQuantumFijo.setVisible(esFijo);
-        txtQuantum.setVisible(esFijo);
-        lblQuantumProceso.setVisible(!esFijo);
-        txtQuantumProceso.setVisible(!esFijo);
-
-        revalidate();
-        repaint();
-    }
 
     private Color getColorForProcess(int id) {
         Color[] colors = {
@@ -787,6 +912,7 @@ public class VentanaRoundRobin extends JFrame {
             limpiarPanel(panelHistorialCola);
             limpiarPanel(panelES);
             limpiarPanel(panelCPU);
+            limpiarPanel(panelTiempos);
 
             // 7. RESETEAR CAMPOS DEL FORMULARIO A VALORES POR DEFECTO
             System.out.println("[REINICIO] Reseteando formulario...");
@@ -849,83 +975,30 @@ public class VentanaRoundRobin extends JFrame {
      * Resetea todos los campos del formulario a valores por defecto
      */
     private void resetearFormulario() {
-        // Campos de texto
         txtLlegada.setText("");
         txtRafaga.setText("");
         txtIntervaloES.setText("");
         txtDuracionES.setText("");
-        txtQuantum.setText("2"); // Quantum por defecto
-        txtQuantumProceso.setText("");
-
-        // Combo box
-        comboTipoRR.setSelectedIndex(0);
-
-        // Actualizar visibilidad de campos quantum
-        actualizarVistaQuantum();
-
-        // Enfocar primer campo
+        txtQuantumProceso.setText(""); // Deja el cuadro en blanco para el nuevo proceso
         txtLlegada.requestFocus();
     }
 
-    private void setEstadoControles(boolean activado) {
-    // Botones de gestión de procesos
-    btnAgregar.setEnabled(activado);
-    btnEditar.setEnabled(activado);
-    btnEliminar.setEnabled(activado);
+    private void setEstadoEdicion(boolean habilitado) {
+    // Bloquear/Desbloquear botones
+    btnAgregar.setEnabled(habilitado);
+    btnEditar.setEnabled(habilitado);
+    btnEliminar.setEnabled(habilitado);
+    btnIniciar.setEnabled(habilitado);
     
-    // Configuración global
-    comboTipoRR.setEnabled(activado);
-    txtQuantum.setEnabled(activado);
-    
-    // Campos del formulario
-    txtLlegada.setEnabled(activado);
-    txtRafaga.setEnabled(activado);
-    txtIntervaloES.setEnabled(activado);
-    txtDuracionES.setEnabled(activado);
-    txtQuantumProceso.setEnabled(activado);
-}
-private List<OperacionES> leerOperacionesES() {
-    String textoMomentos = txtIntervaloES.getText().trim();
-    String textoDuraciones = txtDuracionES.getText().trim();
-    
-    // 1. Verificar si no hay E/S (campos vacíos)
-    if (textoMomentos.isEmpty() && textoDuraciones.isEmpty()) {
-        return new ArrayList<>();
-    }
-    
-    // 2. Separar los valores por el guion
-    String[] momentos = textoMomentos.split("-");
-    String[] duraciones = textoDuraciones.split("-");
-    
-    // 3. Validar que la cantidad de datos coincida
-    if (momentos.length != duraciones.length) {
-        throw new NumberFormatException("La cantidad de momentos y duraciones no coincide.");
-    }
-    
-    List<OperacionES> listaES = new ArrayList<>();
-    // Usamos un Set para detectar duplicados rápidamente
-    java.util.Set<Integer> momentosUnicos = new java.util.HashSet<>();
-    int ultimoMomento = -1;
+    // Bloquear/Desbloquear campos de texto para evitar cambios accidentales
+    txtLlegada.setEnabled(habilitado);
+    txtRafaga.setEnabled(habilitado);
+    txtIntervaloES.setEnabled(habilitado);
+    txtDuracionES.setEnabled(habilitado);
+    txtQuantumProceso.setEnabled(habilitado);
 
-    for (int i = 0; i < momentos.length; i++) {
-        int momento = leerEnteroPositivo(momentos[i], "Momento E/S", true);
-        int duracion = leerEnteroPositivo(duraciones[i], "Duración E/S", true);
-        
-        // 4. VALIDACIÓN DE DUPLICADOS
-        if (!momentosUnicos.add(momento)) {
-            throw new NumberFormatException("Error: El momento de E/S '" + momento + "' está duplicado.");
-        }
-
-        // 5. VALIDACIÓN DE ORDEN (Opcional pero recomendada)
-        if (momento < ultimoMomento) {
-            throw new NumberFormatException("Los momentos deben estar en orden ascendente (ej: 2-5-8).");
-        }
-        
-        ultimoMomento = momento;
-        listaES.add(new OperacionES(momento, duracion));
-    }
-    
-    return listaES;
+    // Bloquear la tabla para que no se pueda seleccionar ni editar nada
+    tablaProcesos.setEnabled(habilitado);
 }
-    
+
 }

@@ -1,8 +1,8 @@
 package models;
 
 public class OperacionES {
-    private final int momentoCPU;   // ms acumulados de CPU cuando se dispara
-    private final int duracion;      // duración de la E/S
+    private final int momentoCPU; // ms acumulados de CPU cuando se dispara
+    private final int duracion; // duración de la E/S
     private boolean ejecutada = false;
 
     public OperacionES(int momentoCPU, int duracion) {
@@ -26,7 +26,10 @@ public class OperacionES {
         this.ejecutada = true;
     }
 
-    public void resetear() {
+    /**
+     * Reinicia el estado de la operación E/S para una nueva simulación
+     */
+    public void reiniciar() {
         this.ejecutada = false;
     }
 }
