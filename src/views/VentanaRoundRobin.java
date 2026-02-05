@@ -134,7 +134,7 @@ public class VentanaRoundRobin extends JFrame {
         panelForm.add(txtQuantumProceso);
 
         // Fila 3: Entrada / Salida
-        panelForm.add(new JLabel("Momentos E/S (ej: 1-3):"));
+        panelForm.add(new JLabel("Operaciones E/S (ej: 1-3):"));
         panelForm.add(txtIntervaloES);
         panelForm.add(new JLabel("Duración E/S (ej: 2-4):"));
         panelForm.add(txtDuracionES);
@@ -280,7 +280,7 @@ public class VentanaRoundRobin extends JFrame {
                     String[] duraciones = textoDuraciones.split("-");
 
                     if (momentos.length != duraciones.length) {
-                        throw new NumberFormatException("Cantidad de momentos y duraciones no coincide");
+                        throw new NumberFormatException("Cantidad de operaciones y duraciones no coincide");
                     }
 
                     for (int i = 0; i < momentos.length; i++) {
@@ -396,7 +396,7 @@ public class VentanaRoundRobin extends JFrame {
     String[] duraciones = textoDuraciones.split("-");
 
     if (momentos.length != duraciones.length) {
-        throw new NumberFormatException("La cantidad de momentos y duraciones no coincide.");
+        throw new NumberFormatException("La cantidad de operaciones y duraciones no coincide.");
     }
 
     List<OperacionES> listaES = new ArrayList<>();
@@ -414,7 +414,7 @@ public class VentanaRoundRobin extends JFrame {
 
         // 2. VALIDACIÓN: Secuenciales y no repetidos
         if (momento <= ultimoMomento) {
-            throw new NumberFormatException("Los momentos de E/S de valor distinto y de orden creciente (ej: 1-2-4)" +
+            throw new NumberFormatException("Los operaciones de E/S de valor distinto y de orden creciente (ej: 1-2-4)" +
                 "(Error en: " + momento + ").");
         }
 

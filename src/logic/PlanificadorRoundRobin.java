@@ -35,9 +35,9 @@ public class PlanificadorRoundRobin {
     private BloqueGantt bloqueActual;
     
 
-    // ======================
+
     // CLASES INTERNAS
-    // ======================
+
     
     public static class EjecucionCPU {
         private Proceso proceso;
@@ -102,9 +102,7 @@ public static class EjecucionES {
         return tiempoActual < tiempoSalida;
     }
 }
-    // ======================
     // CONSTRUCTOR
-    // ======================
     public PlanificadorRoundRobin(List<Proceso> procesos, PoliticaQuantum politicaQuantum) {
         this.tiempoActual = 0;
         this.procesosPendientes = new LinkedList<>(procesos);
