@@ -234,7 +234,28 @@ public class Proceso {
         System.out.println("[DEBUG] Contador de procesos reiniciado a 1");
     }
     
-
+        // Agrega este método a Proceso.java
+    public void restaurarEstadoInicial() {
+        // 1. Restaurar tiempos básicos
+        this.tiempoRestante = this.rafagaCPU; 
+        this.tiempoInicio = -1;
+        this.tiempoFin = -1;
+        this.tiempoEjecutadoAcumulado = 0;
+        
+        // 2. Restaurar estados y banderas
+        this.estado = EnumEstadoProceso.NUEVO;
+        this.enES = false;
+        this.fueBloqueadoAlgunaVez = false;
+        this.tiempoESRestante = 0;
+        
+        // 3. Resetear el índice de qué E/S toca ejecutar
+        this.indiceESActual = 0;
+        
+        // 4. Resetear cada operación de E/S individualmente
+        for (OperacionES op : operacionesES) {
+            op.resetear();
+        }
+    }
     
 
 

@@ -25,4 +25,8 @@ public class OperacionES {
     public void marcarEjecutada() {
         this.ejecutada = true;
     }
+
+    public void resetear() {
+        this.ejecutada = false;
+    }
 }

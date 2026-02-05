@@ -115,7 +115,7 @@ public class VentanaRoundRobin extends JFrame {
         btnAgregar = new JButton("Agregar proceso");
         btnIniciar = new JButton("Iniciar RR");
         btnPausa = new JButton("Pausar");
-        btnReiniciar = new JButton("Reiniciar");
+        btnReiniciar = new JButton("Vaciar");
     }
     
     private void agregarComponentesAlFormulario(JPanel panelForm) {
@@ -239,33 +239,6 @@ public class VentanaRoundRobin extends JFrame {
         return valor;
     }
     
-    private List<OperacionES> leerOperacionesES() {
-        String textoMomentos = txtIntervaloES.getText().trim();
-        String textoDuraciones = txtDuracionES.getText().trim();
-        
-        // Verificar si no hay E/S (campos vacíos o solo contienen 0)
-        if (textoMomentos.isEmpty() && textoDuraciones.isEmpty()) {
-            return new ArrayList<>();
-        }
-        
-        // Validar formato
-        String[] momentos = textoMomentos.split("-");
-        String[] duraciones = textoDuraciones.split("-");
-        
-        if (momentos.length != duraciones.length) {
-            throw new NumberFormatException("Cantidad de momentos y duraciones no coincide");
-        }
-        
-        // Crear lista de operaciones
-        List<OperacionES> listaES = new ArrayList<>();
-        for (int i = 0; i < momentos.length; i++) {
-            int momento = leerEnteroPositivo(momentos[i], "Momento E/S", true);
-            int duracion = leerEnteroPositivo(duraciones[i], "Duración E/S", true);
-            listaES.add(new OperacionES(momento, duracion));
-        }
-        
-        return listaES;
-    }
     
     private Proceso crearProceso(int llegada, int rafaga, List<OperacionES> listaES) {
         Proceso proceso = new Proceso(llegada, rafaga, listaES);
@@ -296,17 +269,34 @@ public class VentanaRoundRobin extends JFrame {
     
     private void iniciarSimulacion() {
         try {
-            PoliticaQuantum politica = crearPoliticaQuantum();
+            if (tableModel.getRowCount() == 0) {
+                JOptionPane.showMessageDialog(this, "No hay procesos para ejecutar.");
+                return;
+            }
+
+            // BLOQUEO DE SEGURIDAD
+            setEstadoControles(false); // Desactivamos edición y agregado
+            btnPausa.setEnabled(true);
+
+            limpiarPanel(panelHistorialCola);
+            limpiarPanel(panelES);
+            limpiarPanel(panelCPU);
+
+            List<Proceso> procesosCargados = tableModel.getProcesos();
+            for (Proceso p : procesosCargados) {
+                p.restaurarEstadoInicial();
+            }
             
-            // Usar procesos originales de la tabla
-            scheduler = new PlanificadorRoundRobin(tableModel.getProcesos(), politica);
+            tableModel.actualizarTabla();
+            PoliticaQuantum politica = crearPoliticaQuantum();
+            scheduler = new PlanificadorRoundRobin(procesosCargados, politica);
             
             iniciarTimerSimulacion();
-            
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, 
-                "Error en configuración: " + ex.getMessage(), 
-                "Error", JOptionPane.ERROR_MESSAGE);
+            btnIniciar.setEnabled(false);
+
+        } catch (Exception ex) {
+            setEstadoControles(true); // Si falla el inicio, reactivamos
+            JOptionPane.showMessageDialog(this, "Error al iniciar: " + ex.getMessage());
         }
     }
     
@@ -334,6 +324,13 @@ public class VentanaRoundRobin extends JFrame {
         
         if (scheduler.haTerminado()) {
             timer.stop();
+            btnIniciar.setEnabled(true); 
+            btnIniciar.setText("Repetir Simulación"); // Opcional: cambio de nombre visual
+            btnPausa.setEnabled(false);
+            
+            // Mantener setEstadoControles(false) para que no agreguen nada 
+            // hasta que no presionen "Vaciar"
+            
             mostrarMensajeFinalizacion();
         }
     }
@@ -608,6 +605,12 @@ public class VentanaRoundRobin extends JFrame {
                     btnPausa.setText("Pausar");
                 }
             }
+
+                    // LIBERACIÓN TOTAL
+                setEstadoControles(true); 
+                btnIniciar.setText("Iniciar RR");
+                btnIniciar.setEnabled(true);
+                btnPausa.setEnabled(false);
             
             // 3. REINICIAR CONTADOR GLOBAL DE PROCESOS
             System.out.println("[REINICIO] Reiniciando contador de IDs...");
@@ -641,7 +644,7 @@ public class VentanaRoundRobin extends JFrame {
                 
                 // Temporizador para restaurar texto después de 2 segundos
                 Timer timerFeedback = new Timer(2000, e -> {
-                    btnReiniciar.setText("Reiniciar");
+                    btnReiniciar.setText("Vaciar");
                     btnReiniciar.setBackground(null);
                     ((Timer)e.getSource()).stop();
                 });
@@ -710,4 +713,66 @@ public class VentanaRoundRobin extends JFrame {
         txtLlegada.requestFocus();
     }
 
+    private void setEstadoControles(boolean activado) {
+    // Botones
+    btnAgregar.setEnabled(activado);
+    comboTipoRR.setEnabled(activado);
+    
+    // Campos de texto
+    txtLlegada.setEnabled(activado);
+    txtRafaga.setEnabled(activado);
+    txtIntervaloES.setEnabled(activado);
+    txtDuracionES.setEnabled(activado);
+    txtQuantum.setEnabled(activado);
+    txtQuantumProceso.setEnabled(activado);
+    
+    // El botón Iniciar se bloquea mientras corre, pero se activa al terminar
+    // El botón Vaciar (Reiniciar) SIEMPRE debe estar activo por si hay error
+    // El botón Pausa solo debe estar activo si la simulación corre
+}
+
+private List<OperacionES> leerOperacionesES() {
+    String textoMomentos = txtIntervaloES.getText().trim();
+    String textoDuraciones = txtDuracionES.getText().trim();
+    
+    // 1. Verificar si no hay E/S (campos vacíos)
+    if (textoMomentos.isEmpty() && textoDuraciones.isEmpty()) {
+        return new ArrayList<>();
+    }
+    
+    // 2. Separar los valores por el guion
+    String[] momentos = textoMomentos.split("-");
+    String[] duraciones = textoDuraciones.split("-");
+    
+    // 3. Validar que la cantidad de datos coincida
+    if (momentos.length != duraciones.length) {
+        throw new NumberFormatException("La cantidad de momentos y duraciones no coincide.");
+    }
+    
+    List<OperacionES> listaES = new ArrayList<>();
+    // Usamos un Set para detectar duplicados rápidamente
+    java.util.Set<Integer> momentosUnicos = new java.util.HashSet<>();
+    int ultimoMomento = -1;
+
+    for (int i = 0; i < momentos.length; i++) {
+        int momento = leerEnteroPositivo(momentos[i], "Momento E/S", true);
+        int duracion = leerEnteroPositivo(duraciones[i], "Duración E/S", true);
+        
+        // 4. VALIDACIÓN DE DUPLICADOS
+        if (!momentosUnicos.add(momento)) {
+            throw new NumberFormatException("Error: El momento de E/S '" + momento + "' está duplicado.");
+        }
+
+        // 5. VALIDACIÓN DE ORDEN (Opcional pero recomendada)
+        if (momento < ultimoMomento) {
+            throw new NumberFormatException("Los momentos deben estar en orden ascendente (ej: 2-5-8).");
+        }
+        
+        ultimoMomento = momento;
+        listaES.add(new OperacionES(momento, duracion));
+    }
+    
+    return listaES;
+}
+    
 }
