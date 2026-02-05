@@ -127,6 +127,20 @@ public class ProcesoTableModel extends AbstractTableModel {
         fireTableDataChanged();
     }
 
+    public void actualizarProceso(int fila, Proceso p) {
+        if (fila >= 0 && fila < procesos.size()) {
+            procesos.set(fila, p);
+            fireTableRowsUpdated(fila, fila);
+        }
+    }
+
+    public void eliminarProceso(int fila) {
+        if (fila >= 0 && fila < procesos.size()) {
+            procesos.remove(fila);
+            fireTableRowsDeleted(fila, fila);
+        }
+    }
+
     public void limpiar() {
         if (!procesos.isEmpty()) {
             int lastIndex = procesos.size() - 1;
