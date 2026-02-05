@@ -32,6 +32,7 @@ public class Proceso {
     private int tiempoEjecutadoAcumulado = 0;
     private int tiempoESRestante = 0;
     private boolean enES = false;
+    private boolean fueBloqueadoAlgunaVez = false;  // Bandera para marcar si pasó por E/S
 
         // En Proceso.java
 
@@ -135,6 +136,7 @@ public class Proceso {
         this.enES = true;
         this.tiempoESRestante = op.getDuracion();
         this.estado = EnumEstadoProceso.BLOQUEADO_ES;
+        this.fueBloqueadoAlgunaVez = true;  // Marcar que ha sido bloqueado
     }
 
     /**
@@ -220,6 +222,11 @@ public class Proceso {
         return operacionesES.get(indiceESActual).getMomentoCPU();
     }
     return 0;
+    }
+
+    // Getter para saber si ha sido bloqueado alguna vez
+    public boolean fueBloqueadoAlgunaVez() {
+        return fueBloqueadoAlgunaVez;
     }
 
     

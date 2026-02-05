@@ -62,22 +62,35 @@ public class VentanaRoundRobin extends JFrame {
     
     private void configurarVentanaPrincipal() {
         setTitle("Simulador Round Robin con Operaciones E/S");
-        setSize(750, 550);
+        setSize(900, 700);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
     }
     
     private void crearPanelFormulario() {
-        JPanel panelForm = new JPanel(new FlowLayout());
-        
         // Inicializar componentes
         inicializarComponentesFormulario();
         
-        // Agregar componentes al panel
-        agregarComponentesAlFormulario(panelForm);
+        // Panel principal que contiene todo
+        JPanel panelPrincipal = new JPanel(new BorderLayout(5, 5));
+        panelPrincipal.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        add(panelForm, BorderLayout.NORTH);
+        // Panel de entrada de datos (arriba)
+        JPanel panelEntrada = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        agregarComponentesAlFormulario(panelEntrada);
+        panelPrincipal.add(panelEntrada, BorderLayout.NORTH);
+        
+        // Panel de botones (centro, centrado)
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
+        panelBotones.setBorder(BorderFactory.createTitledBorder("Controles"));
+        panelBotones.add(btnAgregar);
+        panelBotones.add(btnIniciar);
+        panelBotones.add(btnPausa);
+        panelBotones.add(btnReiniciar);
+        panelPrincipal.add(panelBotones, BorderLayout.CENTER);
+        
+        add(panelPrincipal, BorderLayout.NORTH);
     }
     
     private void inicializarComponentesFormulario() {
@@ -127,38 +140,37 @@ public class VentanaRoundRobin extends JFrame {
         panelForm.add(txtQuantum);
         panelForm.add(lblQuantumProceso);
         panelForm.add(txtQuantumProceso);
-        
-        // Botones
-        panelForm.add(btnAgregar);
-        panelForm.add(btnIniciar);
-        panelForm.add(btnPausa);
-        panelForm.add(btnReiniciar);
     }
     
     private void crearPanelVisualizacion() {
         // Crear tabla de procesos
         tableModel = new ProcesoTableModel();
         JTable tabla = new JTable(tableModel);
+        tabla.setRowHeight(25);
         JScrollPane scroll = new JScrollPane(tabla);
+        scroll.setPreferredSize(new Dimension(880, 150));
         
         // Crear paneles de estado
         crearPanelesDeEstado();
         
-        // Panel de estados (cola, E/S, CPU)
+        // Panel de estados (cola, E/S, CPU) en un scroll
         JPanel panelEstados = crearPanelEstados();
+        JScrollPane scrollEstados = new JScrollPane(panelEstados);
+        scrollEstados.setPreferredSize(new Dimension(880, 350));
         
         // Panel central (tabla + estados)
-        JPanel panelCentro = new JPanel(new BorderLayout());
+        JPanel panelCentro = new JPanel(new BorderLayout(5, 5));
+        panelCentro.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         panelCentro.add(scroll, BorderLayout.NORTH);
-        panelCentro.add(panelEstados, BorderLayout.CENTER);
+        panelCentro.add(scrollEstados, BorderLayout.CENTER);
         
         add(panelCentro, BorderLayout.CENTER);
     }
     
     private void crearPanelesDeEstado() {
-        panelHistorialCola = crearPanelConTitulo("Historial de Cola de Listos", 730, 90);
-        panelES = crearPanelConTitulo("Operaciones de Entrada/Salida (Historial)", 730, 80);
-        panelCPU = crearPanelConTitulo("CPU - Historial de ejecución", 730, 90);
+        panelHistorialCola = crearPanelConTitulo("Historial de Cola de Listos", 850, 100);
+        panelES = crearPanelConTitulo("Operaciones de Entrada/Salida (Historial)", 850, 100);
+        panelCPU = crearPanelConTitulo("CPU - Historial de ejecución", 850, 100);
     }
     
     private JPanel crearPanelConTitulo(String titulo, int ancho, int alto) {
@@ -170,6 +182,7 @@ public class VentanaRoundRobin extends JFrame {
     
     private JPanel crearPanelEstados() {
         JPanel panelEstados = new JPanel(new GridLayout(3, 1, 5, 5));
+        panelEstados.setPreferredSize(new Dimension(850, 320));
         panelEstados.add(panelHistorialCola);
         panelEstados.add(panelES);
         panelEstados.add(panelCPU);
@@ -230,7 +243,7 @@ public class VentanaRoundRobin extends JFrame {
         String textoMomentos = txtIntervaloES.getText().trim();
         String textoDuraciones = txtDuracionES.getText().trim();
         
-        // Verificar si no hay E/S
+        // Verificar si no hay E/S (campos vacíos o solo contienen 0)
         if (textoMomentos.isEmpty() && textoDuraciones.isEmpty()) {
             return new ArrayList<>();
         }
@@ -410,7 +423,7 @@ public class VentanaRoundRobin extends JFrame {
         for (Proceso p : scheduler.getHistorialCPL()) {
             if (p == null) continue;
             
-            JLabel lbl = crearEtiquetaProceso(p.getId());
+            JLabel lbl = crearEtiquetaProceso(p);
             panelHistorialCola.add(lbl);
         }
         
@@ -418,10 +431,17 @@ public class VentanaRoundRobin extends JFrame {
         panelHistorialCola.repaint();
     }
     
-    private JLabel crearEtiquetaProceso(int id) {
-        JLabel lbl = new JLabel("P" + id);
+    private JLabel crearEtiquetaProceso(Proceso proceso) {
+        JLabel lbl = new JLabel("P" + proceso.getId());
         lbl.setOpaque(true);
-        lbl.setBackground(new Color(200, 255, 200));
+        
+        // Color rojo si ha sido bloqueado alguna vez, verde si nunca fue bloqueado
+        if (proceso.fueBloqueadoAlgunaVez() || proceso.getEstado() == EnumEstadoProceso.TERMINADO) {
+            lbl.setBackground(new Color(255, 100, 100)); // Rojo
+        } else {
+            lbl.setBackground(new Color(200, 255, 200)); // Verde
+        }
+        
         lbl.setBorder(BorderFactory.createLineBorder(Color.BLACK));
         lbl.setPreferredSize(new Dimension(50, 30));
         lbl.setHorizontalAlignment(SwingConstants.CENTER);
@@ -463,8 +483,16 @@ public class VentanaRoundRobin extends JFrame {
         
         // Configurar colores según estado
         boolean enES = ejec.estaEnES(scheduler.getTiempoActual());
-        Color colorFondo = enES ? new Color(255, 220, 180) : new Color(200, 230, 255);
-        Color colorBorde = enES ? new Color(255, 140, 0) : Color.BLUE;
+        Color colorFondo;
+        Color colorBorde;
+        
+        if (enES) {
+            colorFondo = new Color(255, 220, 180); // Naranja mientras está en E/S
+            colorBorde = new Color(255, 140, 0);
+        } else {
+            colorFondo = new Color(255, 100, 100); // Rojo cuando sale de E/S
+            colorBorde = Color.RED;
+        }
         
         panel.setBorder(BorderFactory.createLineBorder(colorBorde, 2));
         
