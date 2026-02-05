@@ -568,13 +568,113 @@ public class VentanaRoundRobin extends JFrame {
         return colors[(id - 1) % colors.length];
     }
     
+
+    //Metodos de reinicio
+
     private void reiniciarTodo() {
-        detenerTimer();
-        limpiarScheduler();
-        limpiarTabla();
-        limpiarPaneles();
-        mostrarMensajeReinicio();
+        System.out.println("\n[REINICIO] Iniciando reinicio completo...");
+        
+        // 1. PREGUNTAR CONFIRMACIÓN SI HAY DATOS
+        boolean hayProcesos = tableModel.getRowCount() > 0;
+        boolean simulacionActiva = timer != null && timer.isRunning();
+        
+        if (hayProcesos || simulacionActiva) {
+            int opcion = JOptionPane.showConfirmDialog(
+                this,
+                "¿Está seguro de reiniciar todo?\n\n" +
+                "• " + (simulacionActiva ? "Simulación en curso será detenida\n" : "") +
+                "• " + (hayProcesos ? tableModel.getRowCount() + " procesos serán eliminados\n" : "") +
+                "• Todos los paneles se limpiarán\n\n" +
+                "Esta acción no se puede deshacer.",
+                "Confirmar reinicio completo",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            
+            if (opcion != JOptionPane.YES_OPTION) {
+                System.out.println("[REINICIO] Cancelado por el usuario");
+                return;
+            }
+        }
+        
+        try {
+            // 2. DETENER SIMULACIÓN ACTUAL
+            if (simulacionActiva) {
+                System.out.println("[REINICIO] Deteniendo timer...");
+                timer.stop();
+                timer = null;
+                enPausa = false;
+                if (btnPausa != null) {
+                    btnPausa.setText("Pausar");
+                }
+            }
+            
+            // 3. REINICIAR CONTADOR GLOBAL DE PROCESOS
+            System.out.println("[REINICIO] Reiniciando contador de IDs...");
+            Proceso.reiniciarContadorGlobal();
+            
+            // 4. LIMPIAR TABLA DE PROCESOS
+            System.out.println("[REINICIO] Limpiando tabla de procesos...");
+            tableModel.limpiar();
+            
+            // 5. REINICIAR PLANIFICADOR SI EXISTE
+            if (scheduler != null) {
+                System.out.println("[REINICIO] Reiniciando planificador interno...");
+                scheduler.reiniciar();
+                scheduler = null;
+            }
+            
+            // 6. LIMPIAR PANELES VISUALES
+            System.out.println("[REINICIO] Limpiando paneles visuales...");
+            limpiarPanel(panelHistorialCola);
+            limpiarPanel(panelES);
+            limpiarPanel(panelCPU);
+            
+            // 7. RESETEAR CAMPOS DEL FORMULARIO A VALORES POR DEFECTO
+            System.out.println("[REINICIO] Reseteando formulario...");
+            resetearFormulario();
+            
+            // 8. FEEDBACK VISUAL TEMPORAL
+            if (btnReiniciar != null) {
+                btnReiniciar.setBackground(new Color(180, 255, 180));
+                btnReiniciar.setText("✓ REINICIADO");
+                
+                // Temporizador para restaurar texto después de 2 segundos
+                Timer timerFeedback = new Timer(2000, e -> {
+                    btnReiniciar.setText("Reiniciar");
+                    btnReiniciar.setBackground(null);
+                    ((Timer)e.getSource()).stop();
+                });
+                timerFeedback.setRepeats(false);
+                timerFeedback.start();
+            }
+            
+            // 9. MENSAJE FINAL
+            JOptionPane.showMessageDialog(this,
+                "✅ Sistema reiniciado exitosamente\n\n" +
+                "Estado actual:\n" +
+                "• Contador de procesos: 1 (reiniciado)\n" +
+                "• Tabla de procesos: vacía\n" +
+                "• Paneles visuales: limpios\n" +
+                "• Formulario: reseteado\n\n" +
+                "Listo para nueva simulación.",
+                "Reinicio completo finalizado",
+                JOptionPane.INFORMATION_MESSAGE);
+            
+            System.out.println("[REINICIO] Completo exitosamente");
+            
+        } catch (Exception ex) {
+            System.err.println("[REINICIO ERROR] " + ex.getMessage());
+            ex.printStackTrace();
+            
+            JOptionPane.showMessageDialog(this,
+                "❌ Error durante el reinicio:\n" + ex.getMessage() +
+                "\n\nPor favor, cierre y reinicie la aplicación.",
+                "Error crítico",
+                JOptionPane.ERROR_MESSAGE);
+        }
     }
+    
     
     private void detenerTimer() {
         if (timer != null && timer.isRunning()) {
@@ -582,31 +682,32 @@ public class VentanaRoundRobin extends JFrame {
         }
     }
     
-    private void limpiarScheduler() {
-        scheduler = null;
+    private void limpiarPanel(JPanel panel) {
+        panel.removeAll();
+        panel.revalidate();
+        panel.repaint();
     }
     
-    private void limpiarTabla() {
-        tableModel.limpiar();
-    }
-    
-    private void limpiarPaneles() {
-        panelCPU.removeAll();
-        panelES.removeAll();
-        panelHistorialCola.removeAll();
+    /**
+     * Resetea todos los campos del formulario a valores por defecto
+     */
+    private void resetearFormulario() {
+        // Campos de texto
+        txtLlegada.setText("");
+        txtRafaga.setText("");
+        txtIntervaloES.setText("");
+        txtDuracionES.setText("");
+        txtQuantum.setText("2");  // Quantum por defecto
+        txtQuantumProceso.setText("");
         
-        panelCPU.revalidate();
-        panelCPU.repaint();
-        panelES.revalidate();
-        panelES.repaint();
-        panelHistorialCola.revalidate();
-        panelHistorialCola.repaint();
+        // Combo box
+        comboTipoRR.setSelectedIndex(0);
+        
+        // Actualizar visibilidad de campos quantum
+        actualizarVistaQuantum();
+        
+        // Enfocar primer campo
+        txtLlegada.requestFocus();
     }
-    
-    private void mostrarMensajeReinicio() {
-        JOptionPane.showMessageDialog(this, 
-            "Simulación reiniciada. Puedes agregar nuevos procesos.",
-            "Reinicio Completado",
-            JOptionPane.INFORMATION_MESSAGE);
-    }
+
 }

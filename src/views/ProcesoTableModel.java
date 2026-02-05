@@ -128,8 +128,13 @@ public class ProcesoTableModel extends AbstractTableModel {
     }
 
     public void limpiar() {
-    procesos.clear();
-    fireTableDataChanged();
-}
+        if (!procesos.isEmpty()) {
+            int lastIndex = procesos.size() - 1;
+            procesos.clear();
+            fireTableRowsDeleted(0, lastIndex);  // Notifica a la tabla
+            System.out.println("[DEBUG] Tabla limpiada: " + lastIndex + " procesos eliminados");
+        }
+    }
 
+    
 }

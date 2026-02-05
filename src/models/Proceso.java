@@ -229,6 +229,12 @@ public class Proceso {
         return fueBloqueadoAlgunaVez;
     }
 
+    public static void reiniciarContadorGlobal() {
+        contador = 1;
+        System.out.println("[DEBUG] Contador de procesos reiniciado a 1");
+    }
+    
+
     
 
 
