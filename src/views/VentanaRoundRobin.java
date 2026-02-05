@@ -274,9 +274,10 @@ public class VentanaRoundRobin extends JFrame {
                 return;
             }
 
-            // BLOQUEO DE SEGURIDAD
-            setEstadoControles(false); // Desactivamos edición y agregado
+            // BLOQUEO TOTAL AL EMPEZAR
+            setEstadoControles(false); 
             btnPausa.setEnabled(true);
+            btnIniciar.setEnabled(false);
 
             limpiarPanel(panelHistorialCola);
             limpiarPanel(panelES);
@@ -292,10 +293,9 @@ public class VentanaRoundRobin extends JFrame {
             scheduler = new PlanificadorRoundRobin(procesosCargados, politica);
             
             iniciarTimerSimulacion();
-            btnIniciar.setEnabled(false);
 
         } catch (Exception ex) {
-            setEstadoControles(true); // Si falla el inicio, reactivamos
+            setEstadoControles(true); // Si hay error al validar quantum, liberamos
             JOptionPane.showMessageDialog(this, "Error al iniciar: " + ex.getMessage());
         }
     }
@@ -324,12 +324,13 @@ public class VentanaRoundRobin extends JFrame {
         
         if (scheduler.haTerminado()) {
             timer.stop();
-            btnIniciar.setEnabled(true); 
-            btnIniciar.setText("Repetir Simulación"); // Opcional: cambio de nombre visual
-            btnPausa.setEnabled(false);
             
-            // Mantener setEstadoControles(false) para que no agreguen nada 
-            // hasta que no presionen "Vaciar"
+            // --- AQUÍ LA MAGIA ---
+            setEstadoControles(true); // Liberamos edición y agregado
+            btnIniciar.setEnabled(true); 
+            btnIniciar.setText("Reiniciar Simulación");
+            btnPausa.setEnabled(false); // Bloqueamos pausa porque ya terminó
+            // ---------------------
             
             mostrarMensajeFinalizacion();
         }
@@ -714,22 +715,20 @@ public class VentanaRoundRobin extends JFrame {
     }
 
     private void setEstadoControles(boolean activado) {
-    // Botones
-    btnAgregar.setEnabled(activado);
-    comboTipoRR.setEnabled(activado);
-    
-    // Campos de texto
-    txtLlegada.setEnabled(activado);
-    txtRafaga.setEnabled(activado);
-    txtIntervaloES.setEnabled(activado);
-    txtDuracionES.setEnabled(activado);
-    txtQuantum.setEnabled(activado);
-    txtQuantumProceso.setEnabled(activado);
-    
-    // El botón Iniciar se bloquea mientras corre, pero se activa al terminar
-    // El botón Vaciar (Reiniciar) SIEMPRE debe estar activo por si hay error
-    // El botón Pausa solo debe estar activo si la simulación corre
-}
+        // Botones
+        btnAgregar.setEnabled(activado);
+        comboTipoRR.setEnabled(activado);
+        
+        // Campos de entrada
+        txtLlegada.setEnabled(activado);
+        txtRafaga.setEnabled(activado);
+        txtIntervaloES.setEnabled(activado);
+        txtDuracionES.setEnabled(activado);
+        txtQuantum.setEnabled(activado);
+        txtQuantumProceso.setEnabled(activado);
+        
+        // Nota: btnReiniciar (Vaciar) siempre se queda activo por seguridad
+    }
 
 private List<OperacionES> leerOperacionesES() {
     String textoMomentos = txtIntervaloES.getText().trim();
