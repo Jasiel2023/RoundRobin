@@ -296,6 +296,66 @@ public class Proceso {
         return fueBloqueadoAlgunaVez;
     }
 
+    /**
+     * Calcula la duración total de todas las operaciones E/S del proceso
+     * 
+     * @return suma de las duraciones de todas las operaciones E/S
+     */
+    public int getDuracionTotalES() {
+        return operacionesES.stream()
+                .mapToInt(OperacionES::getDuracion)
+                .sum();
+    }
+
+    /**
+     * Calcula el tiempo de espera del proceso
+     * Fórmula: Tiempo de espera = tiempoFin - tiempoLlegada - rafagaCPU -
+     * duracionTotalES
+     * 
+     * @return tiempo de espera del proceso, o -1 si el proceso no ha terminado
+     */
+    public int calcularTiempoEspera() {
+        if (tiempoFin == -1) {
+            return -1; // Proceso no ha terminado
+        }
+        return tiempoFin - tiempoLlegada - rafagaCPU - getDuracionTotalES();
+    }
+
+    /**
+     * Calcula el tiempo de ejecución (turnaround time) del proceso
+     * Fórmula: Tiempo de ejecución = tiempoFin - tiempoLlegada
+     * 
+     * @return tiempo de ejecución del proceso, o -1 si el proceso no ha terminado
+     */
+    public int calcularTiempoEjecucion() {
+        if (tiempoFin == -1) {
+            return -1; // Proceso no ha terminado
+        }
+        return tiempoFin - tiempoLlegada;
+    }
+
+    /**
+     * Reinicia todos los estados del proceso para una nueva simulación.
+     * Mantiene los datos originales (id, llegada, ráfaga, operaciones E/S)
+     * pero reinicia todo el estado de ejecución.
+     */
+    public void reiniciarParaSimulacion() {
+        this.tiempoRestante = this.rafagaCPU;
+        this.tiempoInicio = -1;
+        this.tiempoFin = -1;
+        this.estado = EnumEstadoProceso.NUEVO;
+        this.indiceESActual = 0;
+        this.tiempoEjecutadoAcumulado = 0;
+        this.tiempoESRestante = 0;
+        this.enES = false;
+        this.fueBloqueadoAlgunaVez = false;
+
+        // Reiniciar todas las operaciones E/S
+        for (OperacionES op : operacionesES) {
+            op.reiniciar();
+        }
+    }
+
     public static void reiniciarContadorGlobal() {
         contador = 1;
         System.out.println("[DEBUG] Contador de procesos reiniciado a 1");

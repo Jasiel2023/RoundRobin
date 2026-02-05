@@ -26,7 +26,7 @@ public class VentanaRoundRobin extends JFrame {
     private JLabel lblQuantumFijo, lblQuantumProceso;
 
     // Paneles de visualización
-    private JPanel panelHistorialCola, panelES, panelCPU;
+    private JPanel panelHistorialCola, panelES, panelCPU, panelTiempos;
 
     // Botones de control
     private JButton btnAgregar, btnEditar, btnEliminar, btnIniciar, btnPausa, btnReiniciar;
@@ -164,19 +164,24 @@ public class VentanaRoundRobin extends JFrame {
         // Panel de estados (cola, E/S, CPU) en un scroll
         JPanel panelEstados = crearPanelEstados();
         JScrollPane scrollEstados = new JScrollPane(panelEstados);
-        scrollEstados.setPreferredSize(new Dimension(880, 350));
+        scrollEstados.setPreferredSize(new Dimension(880, 280));
+
+        // Panel combinado de tiempos de espera y ejecución
+        panelTiempos = crearPanelConTitulo("Tiempos de espera y ejecución", 850, 150);
+        panelTiempos.setLayout(new BorderLayout());
 
         // Panel central (tabla + estados)
         JPanel panelCentro = new JPanel(new BorderLayout(5, 5));
         panelCentro.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         panelCentro.add(scroll, BorderLayout.NORTH);
         panelCentro.add(scrollEstados, BorderLayout.CENTER);
+        panelCentro.add(panelTiempos, BorderLayout.SOUTH);
 
         add(panelCentro, BorderLayout.CENTER);
     }
 
     private void crearPanelesDeEstado() {
-        panelHistorialCola = crearPanelConTitulo("Historial de Cola de Listos", 850, 100);
+        panelHistorialCola = crearPanelConTitulo("Historial de cola de listos", 850, 100);
         panelES = crearPanelConTitulo("Operaciones de Entrada/Salida (Historial)", 850, 100);
         panelCPU = crearPanelConTitulo("CPU - Historial de ejecución", 850, 100);
     }
@@ -245,7 +250,7 @@ public class VentanaRoundRobin extends JFrame {
                 procesoOriginal.getQuantumPersonal() == -1 ? "" : String.valueOf(procesoOriginal.getQuantumPersonal()));
 
         // Agregar campos al panel
-        panelCampos.add(new JLabel("Tiempo de Llegada:"));
+        panelCampos.add(new JLabel("Tiempo de llegada:"));
         panelCampos.add(txtLlegadaEdit);
         panelCampos.add(new JLabel("Ráfaga CPU:"));
         panelCampos.add(txtRafagaEdit);
@@ -253,7 +258,7 @@ public class VentanaRoundRobin extends JFrame {
         panelCampos.add(txtMomentosESEdit);
         panelCampos.add(new JLabel("Duraciones E/S (ej: 2-3-4):"));
         panelCampos.add(txtDuracionesESEdit);
-        panelCampos.add(new JLabel("Quantum Personal:"));
+        panelCampos.add(new JLabel("Quantum personal:"));
         panelCampos.add(txtQuantumEdit);
         panelCampos.add(new JLabel("(Dejar vacío para usar global)"));
         panelCampos.add(new JLabel(""));
@@ -450,6 +455,11 @@ public class VentanaRoundRobin extends JFrame {
         try {
             PoliticaQuantum politica = crearPoliticaQuantum();
 
+            // Reiniciar todos los procesos antes de iniciar la simulación
+            for (Proceso p : tableModel.getProcesos()) {
+                p.reiniciarParaSimulacion();
+            }
+
             // Usar procesos originales de la tabla
             scheduler = new PlanificadorRoundRobin(tableModel.getProcesos(), politica);
 
@@ -495,6 +505,7 @@ public class VentanaRoundRobin extends JFrame {
         actualizarCPU();
         actualizarHistorialCola();
         actualizarES();
+        actualizarTiempos();
     }
 
     private void mostrarMensajeFinalizacion() {
@@ -688,6 +699,144 @@ public class VentanaRoundRobin extends JFrame {
     }
 
     // ======================
+    // TIEMPOS DE ESPERA Y EJECUCIÓN (COMBINADO)
+    // ======================
+
+    private void actualizarTiempos() {
+        panelTiempos.removeAll();
+
+        List<Proceso> procesos = tableModel.getProcesos();
+
+        if (procesos.isEmpty()) {
+            JLabel lblVacio = new JLabel("No hay procesos registrados", SwingConstants.CENTER);
+            lblVacio.setForeground(Color.GRAY);
+            lblVacio.setFont(new Font("Arial", Font.ITALIC, 12));
+            panelTiempos.add(lblVacio, BorderLayout.CENTER);
+        } else {
+            // Panel con layout vertical para mostrar texto
+            JPanel panelContenido = new JPanel();
+            panelContenido.setLayout(new BoxLayout(panelContenido, BoxLayout.Y_AXIS));
+            panelContenido.setBackground(Color.WHITE);
+            panelContenido.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+
+            int sumaTiemposEspera = 0;
+            int sumaTiemposEjecucion = 0;
+            int procesosTerminados = 0;
+
+            // Título de Tiempos de Espera
+            JLabel lblTituloEspera = new JLabel("TIEMPOS DE ESPERA");
+            lblTituloEspera.setFont(new Font("Monospaced", Font.BOLD, 12));
+            lblTituloEspera.setForeground(new Color(0, 100, 0));
+            lblTituloEspera.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelContenido.add(lblTituloEspera);
+            panelContenido.add(Box.createVerticalStrut(3));
+
+            // Tiempos de espera para cada proceso
+            for (Proceso p : procesos) {
+                int tiempoEspera = p.calcularTiempoEspera();
+                String textoFormula = crearTextoTiempoEspera(p, tiempoEspera);
+
+                JLabel lblFormula = new JLabel(textoFormula);
+                lblFormula.setFont(new Font("Monospaced", Font.PLAIN, 12));
+                lblFormula.setAlignmentX(Component.LEFT_ALIGNMENT);
+                panelContenido.add(lblFormula);
+
+                if (tiempoEspera >= 0) {
+                    sumaTiemposEspera += tiempoEspera;
+                    procesosTerminados++;
+                }
+            }
+
+            // Promedio de espera
+            String textoPromedioEspera = crearTextoPromedio("espera", sumaTiemposEspera, procesosTerminados);
+            JLabel lblPromedioEspera = new JLabel(textoPromedioEspera);
+            lblPromedioEspera.setFont(new Font("Monospaced", Font.BOLD, 12));
+            lblPromedioEspera.setForeground(new Color(0, 100, 0));
+            lblPromedioEspera.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelContenido.add(lblPromedioEspera);
+
+            // Separador entre secciones
+            panelContenido.add(Box.createVerticalStrut(10));
+
+            // Título de Tiempos de Ejecución
+            JLabel lblTituloEjecucion = new JLabel("TIEMPOS DE EJECUCIÓN");
+            lblTituloEjecucion.setFont(new Font("Monospaced", Font.BOLD, 12));
+            lblTituloEjecucion.setForeground(new Color(0, 0, 150));
+            lblTituloEjecucion.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelContenido.add(lblTituloEjecucion);
+            panelContenido.add(Box.createVerticalStrut(3));
+
+            // Tiempos de ejecución para cada proceso
+            for (Proceso p : procesos) {
+                int tiempoEjecucion = p.calcularTiempoEjecucion();
+                String textoFormula = crearTextoTiempoEjecucion(p, tiempoEjecucion);
+
+                JLabel lblFormula = new JLabel(textoFormula);
+                lblFormula.setFont(new Font("Monospaced", Font.PLAIN, 12));
+                lblFormula.setAlignmentX(Component.LEFT_ALIGNMENT);
+                panelContenido.add(lblFormula);
+
+                if (tiempoEjecucion >= 0) {
+                    sumaTiemposEjecucion += tiempoEjecucion;
+                }
+            }
+
+            // Promedio de ejecución
+            String textoPromedioEjecucion = crearTextoPromedio("ejecución", sumaTiemposEjecucion, procesosTerminados);
+            JLabel lblPromedioEjecucion = new JLabel(textoPromedioEjecucion);
+            lblPromedioEjecucion.setFont(new Font("Monospaced", Font.BOLD, 12));
+            lblPromedioEjecucion.setForeground(new Color(0, 0, 150));
+            lblPromedioEjecucion.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panelContenido.add(lblPromedioEjecucion);
+
+            JScrollPane scrollContenido = new JScrollPane(panelContenido);
+            scrollContenido.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            scrollContenido.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+            scrollContenido.setBorder(null);
+
+            panelTiempos.add(scrollContenido, BorderLayout.CENTER);
+        }
+
+        panelTiempos.revalidate();
+        panelTiempos.repaint();
+    }
+
+    private String crearTextoTiempoEspera(Proceso proceso, int tiempoEspera) {
+        if (tiempoEspera >= 0) {
+            return String.format("P%d = %d - %d - %d - %d = %d ms",
+                    proceso.getId(),
+                    proceso.getTiempoFin(),
+                    proceso.getTiempoLlegada(),
+                    proceso.getRafagaCPU(),
+                    proceso.getDuracionTotalES(),
+                    tiempoEspera);
+        } else {
+            return String.format("P%d = En ejecución...", proceso.getId());
+        }
+    }
+
+    private String crearTextoTiempoEjecucion(Proceso proceso, int tiempoEjecucion) {
+        if (tiempoEjecucion >= 0) {
+            return String.format("P%d = %d - %d = %d ms",
+                    proceso.getId(),
+                    proceso.getTiempoFin(),
+                    proceso.getTiempoLlegada(),
+                    tiempoEjecucion);
+        } else {
+            return String.format("P%d = En ejecución...", proceso.getId());
+        }
+    }
+
+    private String crearTextoPromedio(String tipo, int suma, int procesosTerminados) {
+        if (procesosTerminados > 0) {
+            double promedio = (double) suma / procesosTerminados;
+            return String.format("Promedio %s = (%d) / %d = %.2f ms", tipo, suma, procesosTerminados, promedio);
+        } else {
+            return String.format("Promedio %s = N/A (ningún proceso terminado)", tipo);
+        }
+    }
+
+    // ======================
     // MÉTODOS AUXILIARES
     // ======================
 
@@ -777,6 +926,7 @@ public class VentanaRoundRobin extends JFrame {
             limpiarPanel(panelHistorialCola);
             limpiarPanel(panelES);
             limpiarPanel(panelCPU);
+            limpiarPanel(panelTiempos);
 
             // 7. RESETEAR CAMPOS DEL FORMULARIO A VALORES POR DEFECTO
             System.out.println("[REINICIO] Reseteando formulario...");
