@@ -47,7 +47,7 @@ public class ProcesoTableModel extends AbstractTableModel {
         procesos.sort(Comparator
                 .comparingInt(Proceso::getTiempoLlegada)
                 .thenComparingInt(pr -> {
-                    int q = pr.getQuantumPersonal();
+                    int q = pr.getQuantumVariable();
                     return (q == -1) ? quantumGlobal : q;
                 })
                 .thenComparingInt(pr -> pr.getMomentoES() > 0 ? 1 : 0));
@@ -98,7 +98,7 @@ public class ProcesoTableModel extends AbstractTableModel {
                 // si es personal -> ese número
                 // si es global -> mostrar quantumGlobal
                 // ======================
-                int q = p.getQuantumPersonal();
+                int q = p.getQuantumVariable();
                 return (q == -1) ? quantumGlobal : q;
             }
             case 4 -> { // O E/S
