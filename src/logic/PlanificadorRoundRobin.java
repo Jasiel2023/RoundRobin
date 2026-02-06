@@ -373,6 +373,26 @@ public void tick() {
         return new ArrayList<>(colaES);
     }
     
+    public void reiniciar() {
+        tiempoActual = 0;
+        procesosPendientes.clear();
+        colaListos.clear();
+        colaES.clear();
+        historialES.clear();
+        historialCPL.clear();
+        historialCPU.clear();
+        ejecucionesCompletadas.clear();
+        ejecucionesES.clear();
+        gantt.clear();
+        procesosQueTerminanES.clear();
+        
+        procesoActual = null;
+        ejecucionActual = null;
+        bloqueActual = null;
+        quantumRestante = 0;
+        
+        System.out.println("[DEBUG] Planificador reiniciado a estado inicial");
+    }
     // NUEVO: Getter para historial E/S (visualización)
     public List<Proceso> getHistorialES() {
         return new ArrayList<>(historialES);
